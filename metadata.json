@@ -1,0 +1,5 @@
+{
+  "name": "Solar work count Lithuania by Marty Party",
+  "description": "An offline-first PWA to track solar panel installation work. It features an interactive visual construction plan loaded from a PDF, allowing managers to pin completed tables, manage workers, track work entries, and view statistics.",
+  "requestFramePermissions": []
+}

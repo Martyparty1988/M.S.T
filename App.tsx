@@ -1,0 +1,63 @@
+import React from 'react';
+import { AppProvider, useAppContext } from './context/AppContext';
+import { I18nProvider, useI18n } from './context/I18nContext';
+import PlanPage from './pages/PlanPage';
+import RecordsPage from './pages/RecordsPage';
+import StatsPage from './pages/StatsPage';
+import SettingsPage from './pages/SettingsPage';
+import BottomNav from './components/BottomNav';
+import Loader from './components/Loader';
+import Toast from './components/Toast';
+
+const AppContent: React.FC = () => {
+  const { page, loading, toast } = useAppContext();
+  const { t } = useI18n();
+
+  const renderPage = () => {
+    switch (page) {
+      case 'plan':
+        return <PlanPage />;
+      case 'records':
+        return <RecordsPage />;
+      case 'stats':
+        return <StatsPage />;
+      case 'settings':
+        return <SettingsPage />;
+      default:
+        return <PlanPage />;
+    }
+  };
+
+  return (
+    <div className="h-full w-full flex flex-col antialiased bg-brand-navy font-sans">
+      <header 
+        className="p-4 text-center shadow-lg glassmorphism z-10"
+        style={{ paddingTop: `calc(1rem + var(--safe-area-inset-top))` }}
+      >
+        <h1 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500">
+          {t('app_title')}
+        </h1>
+      </header>
+
+      <main className="flex-grow overflow-hidden relative">
+        {renderPage()}
+      </main>
+      
+      <BottomNav />
+      {loading && <Loader />}
+      {toast && <Toast message={toast} />}
+    </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <I18nProvider>
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </I18nProvider>
+  );
+};
+
+export default App;
