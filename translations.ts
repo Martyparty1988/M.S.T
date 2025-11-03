@@ -50,9 +50,10 @@ const en = {
   dashboard_add_work_entry_button: "Add Work Entry",
   dashboard_no_project_selected: "Please create or select a project.",
   dashboard_weekly_recap_title: "Weekly Recap",
-  dashboard_total_hours_week: "Total Hours",
-  dashboard_total_earnings_week: "Total Earnings",
-  dashboard_total_tables_week: "Tables Done",
+  dashboard_daily_recap_title: "Daily Recap",
+  dashboard_total_hours: "Total Hours",
+  dashboard_total_earnings: "Total Earnings",
+  dashboard_total_tables: "Tables Done",
 
   // Work Logging Flow
   work_step1_title: "Step 1: Select a Project",
@@ -256,9 +257,10 @@ export const translations = {
     dashboard_add_work_entry_button: "Přidat záznam o práci",
     dashboard_no_project_selected: "Prosím vytvořte nebo vyberte projekt.",
     dashboard_weekly_recap_title: "Týdenní přehled",
-    dashboard_total_hours_week: "Celkem hodin",
-    dashboard_total_earnings_week: "Celkový výdělek",
-    dashboard_total_tables_week: "Hotové stoly",
+    dashboard_daily_recap_title: "Denní přehled",
+    dashboard_total_hours: "Celkem hodin",
+    dashboard_total_earnings: "Celkový výdělek",
+    dashboard_total_tables: "Hotové stoly",
 
     // Work Logging Flow
     work_step1_title: "Krok 1: Vyberte projekt",
@@ -470,9 +472,10 @@ export const translations = {
     payroll_earnings: "Uždarbis",
     payroll_performance: "Našumas",
     dashboard_weekly_recap_title: "Savaitės apžvalga",
-    dashboard_total_hours_week: "Iš viso valandų",
-    dashboard_total_earnings_week: "Bendras uždarbis",
-    dashboard_total_tables_week: "Pagaminti stalai",
+    dashboard_daily_recap_title: "Dienos apžvalga",
+    dashboard_total_hours: "Iš viso valandų",
+    dashboard_total_earnings: "Bendras uždarbis",
+    dashboard_total_tables: "Pagaminti stalai",
   }
 };
 

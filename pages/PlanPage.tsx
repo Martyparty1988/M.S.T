@@ -10,6 +10,20 @@ type WorkType = 'hourly' | 'task';
 type TaskSubType = 'paneling' | 'construction' | 'cables';
 type TableView = 'list' | 'map';
 
+// #region Helper Components for Dashboard
+const MetricItem: React.FC<{ icon: React.ReactNode, value: string, label: string }> = ({ icon, value, label }) => (
+    <div className="flex items-center">
+        <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-full bg-white/10 mr-4">
+            {icon}
+        </div>
+        <div>
+            <p className="text-xl font-bold text-white">{value}</p>
+            <p className="text-xs text-white/60 uppercase tracking-wider">{label}</p>
+        </div>
+    </div>
+);
+// #endregion
+
 // #region Work Log Form Component
 const WorkLogForm: React.FC<{
     project: Project;
@@ -76,7 +90,7 @@ const WorkLogForm: React.FC<{
 
         const duration = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
         const workerIds = [workerId1];
-        if (workerId2) workerIds.push(workerId2);
+        if (workerId2 && workerId1 !== workerId2) workerIds.push(workerId2);
 
         const baseEntryData = { projectId: project.id, workerIds, startTime: start.toISOString(), endTime: end.toISOString(), duration, date: start.toISOString() };
 
@@ -248,20 +262,12 @@ const PlanPage: React.FC = () => {
         return attendanceRecords.find(r => r.projectId === selectedProjectId && r.date === todayStr);
     }, [attendanceRecords, selectedProjectId]);
     
-    const weeklySummary = useMemo(() => {
-        const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
-        const recentEntries = workEntries.filter(e =>
-            new Date(e.date) > oneWeekAgo && e.projectId === selectedProjectId
-        );
-
+    const calculateSummary = (entries: WorkEntry[]) => {
         let totalHours = 0;
         let totalEarnings = 0;
         const tables = new Set<string>();
-        const workerEarnings: { [key: string]: number } = {};
 
-        recentEntries.forEach(entry => {
+        entries.forEach(entry => {
             const numWorkers = entry.workerIds.length;
             if (numWorkers === 0) return;
 
@@ -287,25 +293,54 @@ const PlanPage: React.FC = () => {
                     tables.add(entry.table);
                 }
                 totalEarnings += earningsPart;
-                workerEarnings[workerId] = (workerEarnings[workerId] || 0) + earningsPart;
             });
+        });
+        return { totalHours, totalEarnings, tablesCompleted: tables.size };
+    };
+
+    const dailySummary = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todaysEntries = workEntries.filter(e => new Date(e.date) >= today && e.projectId === selectedProjectId);
+        return calculateSummary(todaysEntries);
+    }, [workEntries, workers, selectedProjectId]);
+
+    const weeklySummary = useMemo(() => {
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        const recentEntries = workEntries.filter(e => new Date(e.date) > oneWeekAgo && e.projectId === selectedProjectId);
+        
+        const summary = calculateSummary(recentEntries);
+        const workerEarnings: { [key: string]: number } = {};
+        
+        recentEntries.forEach(entry => {
+             const numWorkers = entry.workerIds.length;
+             if(numWorkers === 0) return;
+             entry.workerIds.forEach(workerId => {
+                const worker = workers.find(w => w.id === workerId);
+                if (!worker) return;
+
+                let earningsPart = 0;
+                const durationPart = entry.duration / numWorkers;
+                if (entry.type === 'hourly' || (entry.type === 'task' && entry.subType === 'construction')) {
+                    earningsPart = durationPart * (worker.rate || 0);
+                } else if (entry.type === 'task' && entry.subType === 'paneling') {
+                    earningsPart = (entry.moduleCount / numWorkers) * (worker.panelRate || 0);
+                } else if (entry.type === 'task' && entry.subType === 'cables') {
+                    let tableRate = 0;
+                    if (entry.tableSize === 'small') tableRate = worker.cableRateSmall || 0;
+                    else if (entry.tableSize === 'medium') tableRate = worker.cableRateMedium || 0;
+                    else if (entry.tableSize === 'large') tableRate = worker.cableRateLarge || 0;
+                    earningsPart = tableRate / numWorkers;
+                }
+                workerEarnings[workerId] = (workerEarnings[workerId] || 0) + earningsPart;
+             });
         });
 
         const topWorkerId = Object.keys(workerEarnings).sort((a,b) => workerEarnings[b] - workerEarnings[a])[0];
-        let topWorker = null;
-        if (topWorkerId) {
-            const worker = workers.find(w => w.id === topWorkerId);
-            if (worker) {
-                topWorker = { worker, earnings: workerEarnings[topWorkerId] };
-            }
-        }
+        let topWorker = topWorkerId ? { worker: workers.find(w => w.id === topWorkerId), earnings: workerEarnings[topWorkerId] } : null;
 
-        return {
-            totalHours,
-            totalEarnings,
-            tablesCompleted: tables.size,
-            topWorker,
-        };
+        return { ...summary, topWorker };
     }, [workEntries, workers, selectedProjectId]);
 
 
@@ -321,78 +356,78 @@ const PlanPage: React.FC = () => {
 
     const totalTables = activeProject?.tables?.length || 0;
     const progressPercent = totalTables > 0 ? (completedTablesCount / totalTables) * 100 : 0;
+    
+    const RecapCard: React.FC<{title: string, summary: { totalHours: number, totalEarnings: number, tablesCompleted: number }}> = ({ title, summary }) => (
+        <div className="floating-card p-5 h-full">
+            <h2 className="text-xl font-bold text-white mb-4">{title}</h2>
+            <div className="space-y-4">
+                <MetricItem icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} value={summary.totalHours.toFixed(1)} label={t('dashboard_total_hours')} />
+                <MetricItem icon={<span className="text-2xl font-bold">€</span>} value={summary.totalEarnings.toFixed(0)} label={t('dashboard_total_earnings')} />
+                <MetricItem icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 14a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 14a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>} value={String(summary.tablesCompleted)} label={t('dashboard_total_tables')} />
+            </div>
+        </div>
+    );
 
     const renderDashboard = () => (
-        <div className="h-full w-full p-4 overflow-y-auto space-y-6 scrolling-touch">
-            {/* Project Selector */}
-            <div className="floating-card p-4">
-                <label className="block mb-2 text-sm font-medium text-white/70">{t('dashboard_project_selector')}</label>
-                <select value={selectedProjectId} onChange={e => setSelectedProjectId(e.target.value)} className="w-full bg-white/10 text-white p-3 rounded-xl border border-white/20 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] transition">
-                    {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-            </div>
+        <div className="h-full w-full p-4 overflow-y-auto scrolling-touch">
+            <div className="space-y-6">
+                {/* Project Selector */}
+                <div className="floating-card p-4">
+                    <label className="block mb-2 text-sm font-medium text-white/70">{t('dashboard_project_selector')}</label>
+                    <select value={selectedProjectId} onChange={e => setSelectedProjectId(e.target.value)} className="w-full bg-white/10 text-white p-3 rounded-xl border border-white/20 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] transition">
+                        {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                </div>
 
-            {/* Attendance Card */}
-            <div className="floating-card p-5">
-                <h2 className="text-xl font-bold text-white mb-3">{t('dashboard_workers_on_site')}</h2>
-                {projectWorkers.length > 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        {projectWorkers.map(w => (
-                            <div key={w.id} className={`p-2 rounded-lg text-center ${todaysAttendance?.presentWorkerIds.includes(w.id) ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>
-                                <p className="font-semibold">{w.name}</p>
-                                <p className="text-xs">{todaysAttendance?.presentWorkerIds.includes(w.id) ? t('dashboard_present') : t('dashboard_absent')}</p>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="space-y-6">
+                        <RecapCard title={t('dashboard_daily_recap_title')} summary={dailySummary} />
+                        {totalTables > 0 && (
+                            <div className="floating-card p-5">
+                                <h2 className="text-xl font-bold text-white mb-3">{t('dashboard_progress_title')}</h2>
+                                <div className="relative w-full bg-white/10 rounded-full h-6">
+                                    <div className="bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] h-6 rounded-full" style={{ width: `${progressPercent}%` }}></div>
+                                    <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-white">{Math.round(progressPercent)}%</span>
+                                </div>
+                                <div className="flex justify-between items-center mt-2 text-sm text-white/80">
+                                    <span>{completedTablesCount} / {totalTables}</span>
+                                    <span>{totalTables - completedTablesCount} {t('dashboard_tables_remaining')}</span>
+                                </div>
                             </div>
-                        ))}
+                        )}
                     </div>
-                ) : (
-                     <p className="text-white/50">{t('attendance_no_workers_in_project')}</p>
-                )}
-                 {!todaysAttendance && projectWorkers.length > 0 && <p className="text-white/50 mt-2 text-sm">{t('dashboard_no_attendance')}</p>}
-            </div>
-
-            {/* Progress Card */}
-            {totalTables > 0 && (
-                <div className="floating-card p-5">
-                    <h2 className="text-xl font-bold text-white mb-3">{t('dashboard_progress_title')}</h2>
-                    <div className="w-full bg-white/10 rounded-full h-4">
-                        <div className="bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] h-4 rounded-full" style={{ width: `${progressPercent}%` }}></div>
-                    </div>
-                    <div className="flex justify-between items-center mt-2 text-sm text-white/80">
-                        <span>{completedTablesCount} / {totalTables} {t('dashboard_tables_completed')}</span>
-                        <span>{Math.round(progressPercent)}%</span>
-                    </div>
-                </div>
-            )}
-
-            {/* Weekly Recap Card */}
-            <div className="floating-card p-5">
-                <h2 className="text-xl font-bold text-white mb-3">{t('dashboard_weekly_recap_title')}</h2>
-                <div className="grid grid-cols-3 gap-4 text-center mb-4">
-                    <div>
-                        <p className="text-2xl font-bold text-white">{weeklySummary.totalHours.toFixed(1)}</p>
-                        <p className="text-xs text-white/60">{t('dashboard_total_hours_week')}</p>
-                    </div>
-                    <div>
-                        <p className="text-2xl font-bold text-white">€{weeklySummary.totalEarnings.toFixed(0)}</p>
-                        <p className="text-xs text-white/60">{t('dashboard_total_earnings_week')}</p>
-                    </div>
-                    <div>
-                        <p className="text-2xl font-bold text-white">{weeklySummary.tablesCompleted}</p>
-                        <p className="text-xs text-white/60">{t('dashboard_total_tables_week')}</p>
-                    </div>
-                </div>
-                {weeklySummary.topWorker && weeklySummary.topWorker.worker && (
-                    <div className="pt-3 border-t border-white/10">
-                        <h3 className="text-lg font-semibold text-white mb-2">{t('dashboard_weekly_star')} 🌟</h3>
-                        <div className="flex items-center space-x-4">
-                             <div className="text-3xl">🏆</div>
-                             <div>
-                                 <p className="text-2xl font-bold text-[var(--accent-color-light)]">{weeklySummary.topWorker.worker.name}</p>
-                                 <p className="text-white/70">€{weeklySummary.topWorker.earnings.toFixed(2)} {t('dashboard_earned_this_week')}</p>
-                             </div>
+                    <div className="space-y-6">
+                        <RecapCard title={t('dashboard_weekly_recap_title')} summary={weeklySummary} />
+                         <div className="floating-card p-5">
+                            <h2 className="text-xl font-bold text-white mb-4">{t('dashboard_workers_on_site')}</h2>
+                            {projectWorkers.length > 0 ? (
+                                <div className="flex flex-wrap gap-2">
+                                    {projectWorkers.map(w => (
+                                        <div key={w.id} className="bg-white/10 px-3 py-1 rounded-full flex items-center space-x-2">
+                                            <span className={`w-2 h-2 rounded-full ${todaysAttendance?.presentWorkerIds.includes(w.id) ? 'bg-green-400' : 'bg-red-400'}`}></span>
+                                            <span className="text-sm font-medium text-white/90">{w.name}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                 <p className="text-white/50">{t('attendance_no_workers_in_project')}</p>
+                            )}
+                             {!todaysAttendance && projectWorkers.length > 0 && <p className="text-white/50 mt-3 text-sm">{t('dashboard_no_attendance')}</p>}
                         </div>
                     </div>
-                )}
+                    {weeklySummary.topWorker && weeklySummary.topWorker.worker && (
+                        <div className="lg:col-span-2 floating-card p-6 flex flex-col items-center justify-center text-center bg-gradient-to-br from-[var(--gradient-start)] to-[var(--gradient-end)] relative overflow-hidden">
+                             <div className="absolute top-0 left-0 w-full h-full bg-no-repeat bg-cover opacity-10" style={{backgroundImage: "url('data:image/svg+xml,%3Csvg width=\"60\" height=\"60\" viewBox=\"0 0 60 60\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cg fill=\"none\" fill-rule=\"evenodd\"%3E%3Cg fill=\"%23ffffff\" fill-opacity=\"0.4\"%3E%3Cpath d=\"M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')"}}></div>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-14 w-14 text-yellow-300 drop-shadow-lg" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                            </svg>
+                            <h2 className="text-xl font-bold text-yellow-300 mt-2 drop-shadow">{t('dashboard_weekly_star')}</h2>
+                            <p className="text-3xl font-bold text-white mt-2 drop-shadow-md">{weeklySummary.topWorker.worker.name}</p>
+                            <p className="text-lg text-white/80">€{weeklySummary.topWorker.earnings.toFixed(2)}</p>
+                            <p className="text-xs text-white/60">{t('dashboard_earned_this_week')}</p>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );
