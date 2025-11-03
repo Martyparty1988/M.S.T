@@ -54,6 +54,7 @@ const en = {
   dashboard_total_hours: "Total Hours",
   dashboard_total_earnings: "Total Earnings",
   dashboard_total_tables: "Tables Done",
+  dashboard_quick_log_button: "Quick Log Tables",
 
   // Work Logging Flow
   work_step1_title: "Step 1: Select a Project",
@@ -90,6 +91,8 @@ const en = {
   work_view_map: "Map",
   work_view_list: "List",
   work_view_map_zoom: "Zoom with mouse/touch",
+  quick_log_save_button: "Log {0} Tables",
+  quick_log_table_sizes_label: "Selected Tables & Sizes",
   
   // Records Page
   records_all_entries_title: "Work Records & Search",
@@ -213,6 +216,7 @@ const en = {
   toast_pricing_scenario_deleted: "Pricing scenario deleted.",
   toast_cannot_delete_default_scenario: "Cannot delete default scenarios.",
   toast_active_scenario_deleted: "Active scenario deleted, switched to default.",
+  toast_tables_logged: "tables logged successfully!",
   error_end_time_before_start: "End time must be after start time.",
   error_select_table: "Please select a table from the project.",
   error_no_tables_in_project: "This project has no defined list of tables.",
@@ -264,6 +268,7 @@ export const translations = {
     dashboard_total_hours: "Celkem hodin",
     dashboard_total_earnings: "Celkový výdělek",
     dashboard_total_tables: "Hotové stoly",
+    dashboard_quick_log_button: "Rychlý záznam stolů",
 
     // Work Logging Flow
     work_step1_title: "Krok 1: Vyberte projekt",
@@ -300,6 +305,8 @@ export const translations = {
     work_view_map: "Mapa",
     work_view_list: "Seznam",
     work_view_map_zoom: "Zoom myší/dotykem",
+    quick_log_save_button: "Zapsat {0} stolů",
+    quick_log_table_sizes_label: "Velikosti vybraných stolů",
     
     // Records Page
     records_all_entries_title: "Záznamy a vyhledávání",
@@ -423,6 +430,7 @@ export const translations = {
     toast_pricing_scenario_deleted: "Cenový scénář smazán.",
     toast_cannot_delete_default_scenario: "Nelze smazat výchozí scénáře.",
     toast_active_scenario_deleted: "Aktivní scénář smazán, přepnuto na výchozí.",
+    toast_tables_logged: "stolů úspěšně zapsáno!",
     error_end_time_before_start: "Čas ukončení musí být po čase začátku.",
     error_select_table: "Vyberte prosím stůl z projektu.",
     error_no_tables_in_project: "Tento projekt nemá definovaný seznam stolů.",
@@ -482,6 +490,10 @@ export const translations = {
     dashboard_total_hours: "Iš viso valandų",
     dashboard_total_earnings: "Bendras uždarbis",
     dashboard_total_tables: "Pagaminti stalai",
+    dashboard_quick_log_button: "Greitas stalų registravimas",
+    toast_tables_logged: "stalai sėkmingai užregistruoti!",
+    quick_log_save_button: "Registruoti {0} stalus",
+    quick_log_table_sizes_label: "Pasirinktų stalų dydžiai",
   }
 };
 

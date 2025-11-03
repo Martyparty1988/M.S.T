@@ -142,6 +142,7 @@ const PayrollPage: React.FC = () => {
     const [dateRange, setDateRange] = useState({ start: startOfMonth, end: endOfMonth });
     const [selectedWorkerIds, setSelectedWorkerIds] = useState<Set<string>>(new Set());
     const [selectedWorkTypes, setSelectedWorkTypes] = useState<Set<string>>(new Set(['hourly', 'paneling', 'construction', 'cables']));
+    const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
 
     const formInputStyle = "w-full bg-white/10 text-white p-3 rounded-xl border border-white/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] focus:border-[var(--accent-color)] transition text-base font-normal";
 
@@ -199,46 +200,59 @@ const PayrollPage: React.FC = () => {
             const numWorkers = entry.workerIds.length;
             if (numWorkers === 0) return;
 
+            const durationPart = entry.duration / numWorkers;
+
             entry.workerIds.forEach(workerId => {
                 const worker = workerRates[workerId];
-                if (!worker || !stats[workerId]) return;
-                
-                if (selectedWorkerIds.size > 0 && !selectedWorkerIds.has(workerId)) return;
-
-                let earnings = 0;
-                const durationPart = entry.duration / numWorkers;
+                if (!worker || !stats[workerId] || (selectedWorkerIds.size > 0 && !selectedWorkerIds.has(workerId))) return;
+                 
                 stats[workerId].totalHours += durationPart;
-                
+                let earningsPart = 0;
+
                 if (entry.type === 'hourly') {
-                    earnings = durationPart * (worker.rate || 0);
+                    earningsPart = durationPart * (worker.rate || 0);
                     stats[workerId].hourly.hours += durationPart;
-                    stats[workerId].hourly.earnings += earnings;
+                    stats[workerId].hourly.earnings += earningsPart;
                 } else if (entry.type === 'task' && entry.subType === 'construction') {
-                    earnings = durationPart * (worker.rate || 0);
+                    earningsPart = durationPart * (worker.rate || 0);
                     stats[workerId].construction.hours += durationPart;
-                    stats[workerId].construction.earnings += earnings;
+                    stats[workerId].construction.earnings += earningsPart;
                 } else if (entry.type === 'task' && entry.subType === 'paneling') {
-                    const panelsPart = entry.moduleCount / numWorkers;
-                    earnings = panelsPart * (worker.panelRate || 0);
-                    stats[workerId].paneling.panels += panelsPart;
-                    stats[workerId].paneling.earnings += earnings;
+                    const panelsPerWorker = (entry as PanelingWorkEntry).moduleCount / numWorkers;
+                    earningsPart = panelsPerWorker * (worker.panelRate || 0);
+                    stats[workerId].paneling.panels += panelsPerWorker;
+                    stats[workerId].paneling.earnings += earningsPart;
                 } else if (entry.type === 'task' && entry.subType === 'cables') {
+                    const cablesEntry = entry as CablesWorkEntry;
                     let tableRate = 0;
-                    if(entry.tableSize === 'small') tableRate = worker.cableRateSmall || 0;
-                    else if(entry.tableSize === 'medium') tableRate = worker.cableRateMedium || 0;
-                    else if(entry.tableSize === 'large') tableRate = worker.cableRateLarge || 0;
+                    switch(cablesEntry.tableSize) {
+                        case 'small': tableRate = worker.cableRateSmall || 0; break;
+                        case 'medium': tableRate = worker.cableRateMedium || 0; break;
+                        case 'large': tableRate = worker.cableRateLarge || 0; break;
+                    }
+                    earningsPart = tableRate / numWorkers;
+                    const tablesPerWorker = 1 / numWorkers;
                     
-                    earnings = tableRate / numWorkers;
-                    
-                    if(entry.tableSize) stats[workerId].cables.tables[entry.tableSize] += 1 / numWorkers;
-                    stats[workerId].cables.tables.total += 1 / numWorkers;
-                    stats[workerId].cables.earnings += earnings;
+                    if(cablesEntry.tableSize) {
+                        stats[workerId].cables.tables[cablesEntry.tableSize] += tablesPerWorker;
+                    }
+                    stats[workerId].cables.tables.total += tablesPerWorker;
+                    stats[workerId].cables.earnings += earningsPart;
                     stats[workerId].cables.hours += durationPart;
-                    stats[workerId].cables.totalEntryCount++;
-                    if (numWorkers > 1) stats[workerId].cables.sharedEntryCount++;
                 }
-                stats[workerId].totalEarnings += earnings;
+                stats[workerId].totalEarnings += earningsPart;
             });
+             
+            if (entry.type === 'task' && entry.subType === 'cables') {
+                entry.workerIds.forEach(workerId => {
+                    if (stats[workerId]) {
+                        stats[workerId].cables.totalEntryCount++;
+                        if (numWorkers > 1) {
+                            stats[workerId].cables.sharedEntryCount++;
+                        }
+                    }
+                });
+            }
         });
         
         const allStatsWithCalcs = Object.values(stats)
@@ -297,50 +311,61 @@ const PayrollPage: React.FC = () => {
 
     return (
         <div className="h-full w-full p-4 flex flex-col overflow-hidden">
-            <div className="floating-card p-5 mb-6 space-y-4">
-                 <div className="flex justify-between items-center">
+            <div className="floating-card p-5 mb-6">
+                 <div className="flex justify-between items-center cursor-pointer" onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}>
                     <h2 className="text-xl font-bold text-white">{t('payroll_filters_title')}</h2>
-                    <button onClick={exportToCsv} className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-3 rounded-xl transition text-sm active:scale-95">{t('payroll_export_csv_button')}</button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label className="block mb-2 text-sm font-medium text-white/70">{t('payroll_project_label')}</label>
-                        <select value={selectedProjectId} onChange={e => setSelectedProjectId(e.target.value)} className={formInputStyle}>
-                            <option value="">{t('payroll_all_projects')}</option>
-                            {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                        </select>
-                    </div>
-                     <div>
-                        <label className="block mb-2 text-sm font-medium text-white/70">{t('payroll_start_date_label')}</label>
-                        <input type="date" value={dateRange.start} onChange={e => setDateRange(prev => ({...prev, start: e.target.value}))} className={formInputStyle} />
-                    </div>
-                     <div>
-                        <label className="block mb-2 text-sm font-medium text-white/70">{t('payroll_end_date_label')}</label>
-                        <input type="date" value={dateRange.end} onChange={e => setDateRange(prev => ({...prev, end: e.target.value}))} className={formInputStyle} />
+                    <div className="flex items-center space-x-2">
+                        <button onClick={(e) => { e.stopPropagation(); exportToCsv(); }} className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-3 rounded-xl transition text-sm active:scale-95">{t('payroll_export_csv_button')}</button>
+                        <div className="p-1 rounded-full hover:bg-white/10 transition-transform duration-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 text-white transform ${isFiltersExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
                     </div>
                 </div>
-                <div>
-                    <label className="block mb-2 text-sm font-medium text-white/70">{t('payroll_workers_label')}</label>
-                    <div className="max-h-24 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 p-2 bg-black/20 rounded-lg">
-                        {workers.map(w => (
-                            <label key={w.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-white/10 cursor-pointer">
-                                <input type="checkbox" checked={selectedWorkerIds.has(w.id)} onChange={() => handleWorkerSelection(w.id)} className="form-checkbox h-4 w-4 rounded bg-white/20 border-white/30 text-[var(--accent-color)] focus:ring-[var(--accent-color)]"/>
-                                <span className="text-sm">{w.name}</span>
-                            </label>
-                        ))}
+                {isFiltersExpanded && (
+                    <div className="pt-4 mt-4 border-t border-white/10 space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label className="block mb-2 text-sm font-medium text-white/70">{t('payroll_project_label')}</label>
+                                <select value={selectedProjectId} onChange={e => setSelectedProjectId(e.target.value)} className={formInputStyle}>
+                                    <option value="">{t('payroll_all_projects')}</option>
+                                    {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block mb-2 text-sm font-medium text-white/70">{t('payroll_start_date_label')}</label>
+                                <input type="date" value={dateRange.start} onChange={e => setDateRange(prev => ({...prev, start: e.target.value}))} className={formInputStyle} />
+                            </div>
+                            <div>
+                                <label className="block mb-2 text-sm font-medium text-white/70">{t('payroll_end_date_label')}</label>
+                                <input type="date" value={dateRange.end} onChange={e => setDateRange(prev => ({...prev, end: e.target.value}))} className={formInputStyle} />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block mb-2 text-sm font-medium text-white/70">{t('payroll_workers_label')}</label>
+                            <div className="max-h-24 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 p-2 bg-black/20 rounded-lg">
+                                {workers.map(w => (
+                                    <label key={w.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-white/10 cursor-pointer">
+                                        <input type="checkbox" checked={selectedWorkerIds.has(w.id)} onChange={() => handleWorkerSelection(w.id)} className="form-checkbox h-4 w-4 rounded bg-white/20 border-white/30 text-[var(--accent-color)] focus:ring-[var(--accent-color)]"/>
+                                        <span className="text-sm">{w.name}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block mb-2 text-sm font-medium text-white/70">{t('payroll_work_types_label')}</label>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                {workTypeOptions.map(wt => (
+                                    <label key={wt} className="flex items-center space-x-2 p-2 rounded-md hover:bg-white/10 cursor-pointer">
+                                        <input type="checkbox" checked={selectedWorkTypes.has(wt)} onChange={() => handleWorkTypeSelection(wt)} className="form-checkbox h-4 w-4 rounded bg-white/20 border-white/30 text-[var(--accent-color)] focus:ring-[var(--accent-color)]"/>
+                                        <span className="text-sm capitalize">{t(`work_task_${wt}` as any) || t(`work_type_${wt}` as any)}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div>
-                    <label className="block mb-2 text-sm font-medium text-white/70">{t('payroll_work_types_label')}</label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {workTypeOptions.map(wt => (
-                             <label key={wt} className="flex items-center space-x-2 p-2 rounded-md hover:bg-white/10 cursor-pointer">
-                                <input type="checkbox" checked={selectedWorkTypes.has(wt)} onChange={() => handleWorkTypeSelection(wt)} className="form-checkbox h-4 w-4 rounded bg-white/20 border-white/30 text-[var(--accent-color)] focus:ring-[var(--accent-color)]"/>
-                                <span className="text-sm capitalize">{t(`work_task_${wt}` as any) || t(`work_type_${wt}` as any)}</span>
-                            </label>
-                        ))}
-                    </div>
-                </div>
+                )}
             </div>
 
             {stats.length > 0 ? (

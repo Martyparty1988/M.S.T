@@ -1,9 +1,10 @@
-import React, { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
 import { Project, WorkEntry, PanelingWorkEntry, ConstructionWorkEntry, CablesWorkEntry, HourlyWorkEntry, TableSize, Worker, AttendanceRecord } from '../types';
 import TableMap from '../components/TableMap';
 import SkeletonCard from '../components/SkeletonCard';
+import QuickLogTablesModal from '../components/QuickLogTablesModal';
 
 type Step = 'type' | 'task_subtype' | 'form';
 type WorkType = 'hourly' | 'task';
@@ -137,11 +138,11 @@ const WorkLogForm: React.FC<{
       <div className="h-full w-full flex flex-col overflow-hidden bg-[var(--bg-color)]">
         <header className="flex items-center justify-between p-4" style={{ paddingTop: `calc(16px + var(--safe-area-inset-top))` }}>
             <button onClick={handleBack} className="p-2 rounded-full hover:bg-white/10 transition active:scale-95">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
             </button>
              <h2 className="text-xl font-bold">{project.name}</h2>
              <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 transition active:scale-95">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
         </header>
 
@@ -166,7 +167,6 @@ const WorkLogForm: React.FC<{
                     <div className="grid grid-cols-1 gap-4">
                         <div onClick={() => { setSelectedTaskSubType('paneling'); setStep('form'); }} className={cardButtonStyle}><h3 className="text-xl font-bold text-white">{t('work_task_paneling')}</h3></div>
                         <div onClick={() => { setSelectedTaskSubType('construction'); setStep('form'); }} className={cardButtonStyle}><h3 className="text-xl font-bold text-white">{t('work_task_construction')}</h3></div>
-                        <div onClick={() => { if (project.tables && project.tables.length > 0) { setSelectedTaskSubType('cables'); setStep('form'); } else { showToast(t('error_no_tables_in_project')); } }} className={`${cardButtonStyle} ${(!project.tables || project.tables.length === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}><h3 className="text-xl font-bold text-white">{t('work_task_cables')}</h3></div>
                     </div>
                 </div>
             )}
@@ -213,7 +213,10 @@ const WorkLogForm: React.FC<{
                                         <button type="button" onClick={() => setTableView('list')} className={`px-3 py-1 text-xs rounded-full transition active:scale-95 ${tableView === 'list' ? 'bg-[var(--accent-color)] text-white' : 'text-white/70'}`}>{t('work_view_list')}</button>
                                     </div>
                                 </div>
-                                {tableView === 'map' ? <TableMap tables={project?.tables || []} completedTables={completedTables} selectedTable={table} onTableSelect={setTable} />
+                                {tableView === 'map' ? 
+                                <div className="h-80 w-full">
+                                    <TableMap tables={project?.tables || []} completedTables={completedTables} selectedTables={new Set(table ? [table] : [])} onTableSelect={setTable} />
+                                </div>
                                 : (
                                     <div className="relative" ref={tableDropdownRef}>
                                         <input onClick={() => setIsTableListVisible(!isTableListVisible)} onFocus={() => setIsTableListVisible(true)} type="text" placeholder={t('work_search_table_placeholder')} value={tableSearch} onChange={(e) => setTableSearch(e.target.value)} className={formInputStyle} />
@@ -252,9 +255,10 @@ const PlanPage: React.FC = () => {
     const { t } = useI18n();
     const [selectedProjectId, setSelectedProjectId] = useState<string>('');
     const [isFormVisible, setIsFormVisible] = useState(false);
+    const [isQuickLogVisible, setIsQuickLogVisible] = useState(false);
 
     // Set default project on load
-    React.useEffect(() => {
+    useEffect(() => {
         if (projects.length > 0 && !selectedProjectId) {
             const activeProject = projects.find(p => p.status === 'active');
             setSelectedProjectId(activeProject ? activeProject.id : projects[0].id);
@@ -404,6 +408,12 @@ const PlanPage: React.FC = () => {
                                     <span>{completedTablesCount} / {totalTables}</span>
                                     <span>{totalTables - completedTablesCount} {t('dashboard_tables_remaining')}</span>
                                 </div>
+                                <button
+                                    onClick={() => setIsQuickLogVisible(true)}
+                                    className="mt-4 w-full bg-white/10 hover:bg-white/20 text-white font-bold py-3 px-4 rounded-xl transition duration-200 ease-in-out active:scale-95"
+                                >
+                                    {t('dashboard_quick_log_button')}
+                                </button>
                             </div>
                         )}
                     </div>
@@ -465,12 +475,22 @@ const PlanPage: React.FC = () => {
                 className="absolute z-20 right-6 bottom-6 w-16 h-16 rounded-full bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] text-white shadow-lg flex items-center justify-center transform hover:scale-110 active:scale-95 transition-transform"
                 aria-label={t('dashboard_add_work_entry_button')}
             >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
             </button>
             
             {isFormVisible && (
                 <div className="absolute inset-0 z-30 slide-in-right">
                     <WorkLogForm project={activeProject} onClose={() => setIsFormVisible(false)} />
+                </div>
+            )}
+
+            {isQuickLogVisible && activeProject && (
+                <div className="absolute inset-0 z-30 slide-in-right">
+                   <QuickLogTablesModal
+                        isOpen={isQuickLogVisible}
+                        onClose={() => setIsQuickLogVisible(false)}
+                        project={activeProject}
+                    />
                 </div>
             )}
         </div>

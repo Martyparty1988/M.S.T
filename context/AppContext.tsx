@@ -36,7 +36,7 @@ interface AppContextType extends AppState {
   addWorker: (worker: Omit<Worker, 'id'>) => Worker;
   updateWorker: (worker: Worker) => void;
   deleteWorker: (id: string) => void;
-  addWorkEntry: (entry: Omit<WorkEntry, 'id'>) => void;
+  addWorkEntry: (entry: Omit<WorkEntry, 'id'>, suppressToast?: boolean) => void;
   updateWorkEntry: (entry: WorkEntry) => void;
   deleteWorkEntry: (id: string) => void;
   saveAttendance: (projectId: string, date: string, presentWorkerIds: string[]) => void;
@@ -126,13 +126,15 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     showToast(t('toast_worker_deleted'));
   }, [setWorkers, setWorkEntries, setProjects, setAttendanceRecords, t]);
   
-  const addWorkEntry = useCallback((entry: Omit<WorkEntry, 'id'>) => {
+  const addWorkEntry = useCallback((entry: Omit<WorkEntry, 'id'>, suppressToast = false) => {
     const newEntry = {
       ...entry,
       id: Date.now().toString(),
     } as WorkEntry;
     setWorkEntries(prev => [newEntry, ...prev]);
-    showToast(t('toast_entry_added'));
+    if (!suppressToast) {
+        showToast(t('toast_entry_added'));
+    }
   }, [setWorkEntries, t]);
 
   const updateWorkEntry = useCallback((updatedEntry: WorkEntry) => {

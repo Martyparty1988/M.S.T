@@ -187,7 +187,6 @@ const RecordsPage: React.FC = () => {
   const getWorkerNames = (ids: string[]) => ids.map(id => workers.find(w => w.id === id)?.name || t('records_unknown_worker')).join(', ');
   const getProjectName = (id: string) => projects.find(p => p.id === id)?.name || t('records_unknown_project');
   
-  // FIX: Explicitly setting the return type for useMemo to fix a type inference issue where `entries` was `unknown`.
   const groupedAndFilteredEntries = useMemo((): Record<string, WorkEntry[]> => {
     let filtered = [...workEntries];
 
@@ -225,14 +224,14 @@ const RecordsPage: React.FC = () => {
     
     const sorted = filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     
-    return sorted.reduce((acc, entry) => {
+    return sorted.reduce<Record<string, WorkEntry[]>>((acc, entry) => {
         const dateKey = new Date(entry.date).toISOString().split('T')[0];
         if (!acc[dateKey]) {
             acc[dateKey] = [];
         }
         acc[dateKey].push(entry);
         return acc;
-    }, {} as Record<string, WorkEntry[]>);
+    }, {});
 
   }, [workEntries, selectedWorkerFilterId, tableSearchQuery]);
   
@@ -312,13 +311,14 @@ const RecordsPage: React.FC = () => {
                         <h3 className="font-bold text-lg text-white">
                             {new Date(date).toLocaleDateString(locale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                         </h3>
-                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-white transition-transform ${collapsedDays.has(date) ? 'rotate-0' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-white transition-transform ${collapsedDays.has(date) ? 'rotate-0' : 'rotate-180'}`} fill="none" viewBox="0 0 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
                     </button>
                     {!collapsedDays.has(date) && (
                         <div className="space-y-4">
-                        {entries.map(entry => (
+                        {/* FIX: Cast 'entries' to WorkEntry[] to fix TypeScript error "Property 'map' does not exist on type 'unknown'". This can happen with Object.entries in some TypeScript configurations where value types are not correctly inferred. */}
+                        {(entries as WorkEntry[]).map((entry: WorkEntry) => (
                             <div key={entry.id} className="floating-card p-5 flex justify-between items-center transition duration-200 ease-in-out hover:bg-white/20">
                                 <div className="flex-grow">
                                     <div className="flex justify-between items-start">
@@ -333,12 +333,12 @@ const RecordsPage: React.FC = () => {
                                 </div>
                                 <div className="flex items-center self-start">
                                 <button onClick={() => handleEdit(entry)} className="text-white/40 hover:text-[var(--accent-color)] p-2 transition duration-200 ease-in-out active:scale-95">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z" />
                                     </svg>
                                 </button>
                                 <button onClick={() => deleteWorkEntry(entry.id)} className="text-white/40 hover:text-red-500 p-2 ml-1 transition duration-200 ease-in-out active:scale-95">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                     </svg>
                                 </button>

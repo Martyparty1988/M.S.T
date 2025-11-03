@@ -1,15 +1,16 @@
 
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useI18n } from '../context/I18nContext';
 
 interface TableMapProps {
     tables: string[];
     completedTables: Set<string>;
-    selectedTable: string | null;
+    selectedTables: Set<string>;
     onTableSelect: (table: string) => void;
 }
 
-const TableMap: React.FC<TableMapProps> = ({ tables, completedTables, selectedTable, onTableSelect }) => {
+const TableMap: React.FC<TableMapProps> = ({ tables, completedTables, selectedTables, onTableSelect }) => {
     const { t } = useI18n();
     const svgRef = useRef<SVGSVGElement>(null);
     const [viewBox, setViewBox] = useState({ x: 0, y: 0, width: 1000, height: 800 });
@@ -23,7 +24,7 @@ const TableMap: React.FC<TableMapProps> = ({ tables, completedTables, selectedTa
     const COLUMNS = 12;
 
     const getTableColor = (table: string) => {
-        if (table === selectedTable) return 'var(--gradient-start)';
+        if (selectedTables.has(table)) return 'var(--gradient-start)';
         if (completedTables.has(table)) return '#16a34a'; // green-600
         return 'rgba(255, 255, 255, 0.1)';
     };
@@ -141,7 +142,7 @@ const TableMap: React.FC<TableMapProps> = ({ tables, completedTables, selectedTa
     }, [tables.length, COLUMNS, TABLE_WIDTH, TABLE_HEIGHT, GAP]);
 
     return (
-        <div className="w-full h-80 bg-white/5 rounded-xl overflow-hidden cursor-grab active:cursor-grabbing touch-none relative">
+        <div className="w-full h-full bg-white/5 rounded-xl overflow-hidden cursor-grab active:cursor-grabbing touch-none relative">
             <svg
                 ref={svgRef}
                 className="w-full h-full"
