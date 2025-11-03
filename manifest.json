@@ -1,0 +1,17 @@
+{
+  "short_name": "Solar WC",
+  "name": "Solar Work Count LT",
+  "description": "An offline-first PWA for tracking solar installation work. It features project-based management, detailed work entry logging (hourly, paneling, construction, cables), and project-specific statistics.",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#0c0c1e",
+  "background_color": "#0c0c1e"
+}

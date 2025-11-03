@@ -68,6 +68,7 @@ const en = {
   work_back_button: "Back",
   work_view_map: "Map",
   work_view_list: "List",
+  work_view_map_zoom: "Zoom with mouse/touch",
   
   // Records Page
   records_all_entries_title: "Work Records & Search",
@@ -210,6 +211,7 @@ export const translations = {
     work_back_button: "Zpět",
     work_view_map: "Mapa",
     work_view_list: "Seznam",
+    work_view_map_zoom: "Zoom myší/dotykem",
     
     // Records Page
     records_all_entries_title: "Záznamy a vyhledávání",
