@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { Project, Worker, WorkEntry, Page, Theme } from '../types';
+import { Project, Worker, WorkEntry, Page, Theme, AttendanceRecord } from '../types';
 import { useI18n } from './I18nContext';
 import { ZARASAI_STOLY, Locale } from '../translations';
 
@@ -10,12 +10,14 @@ const ZARASAI_PROJECT: Project = {
   name: 'Zarasai',
   status: 'active',
   tables: ZARASAI_STOLY,
+  workerIds: [],
 };
 
 interface AppState {
   projects: Project[];
   workers: Worker[];
   workEntries: WorkEntry[];
+  attendanceRecords: AttendanceRecord[];
   page: Page;
   toast: string | null;
   loading: boolean;
@@ -27,13 +29,16 @@ interface AppContextType extends AppState {
   setWorkEntries: React.Dispatch<React.SetStateAction<WorkEntry[]>>;
   setPage: React.Dispatch<React.SetStateAction<Page>>;
   
-  addProject: (project: Omit<Project, 'id'>) => void;
+  addProject: (project: Omit<Project, 'id' | 'workerIds'>) => void;
   deleteProject: (id: string) => void;
+  updateProjectWorkers: (projectId: string, workerIds: string[]) => void;
+
   addWorker: (worker: Omit<Worker, 'id'>) => void;
   deleteWorker: (id: string) => void;
   addWorkEntry: (entry: Omit<WorkEntry, 'id'>) => void;
   updateWorkEntry: (entry: WorkEntry) => void;
   deleteWorkEntry: (id: string) => void;
+  saveAttendance: (projectId: string, date: string, presentWorkerIds: string[]) => void;
   mergeImportedData: (data: any, setTheme: (theme: Theme) => void, setLocale: (locale: Locale) => void) => void;
 
   showToast: (message: string) => void;
@@ -46,6 +51,7 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
   const [projects, setProjects] = useLocalStorage<Project[]>('projects', [ZARASAI_PROJECT]);
   const [workers, setWorkers] = useLocalStorage<Worker[]>('workers', []);
   const [workEntries, setWorkEntries] = useLocalStorage<WorkEntry[]>('workEntries', []);
+  const [attendanceRecords, setAttendanceRecords] = useLocalStorage<AttendanceRecord[]>('attendanceRecords', []);
   const [page, setPage] = useState<Page>('plan');
   const [toast, setToast] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -56,8 +62,8 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     setTimeout(() => setToast(null), 3000);
   };
 
-  const addProject = useCallback((project: Omit<Project, 'id'>) => {
-    const newProject = { ...project, id: Date.now().toString() };
+  const addProject = useCallback((project: Omit<Project, 'id' | 'workerIds'>) => {
+    const newProject: Project = { ...project, id: Date.now().toString(), workerIds: [] };
     setProjects(prev => [...prev, newProject]);
     showToast(t('toast_project_added'));
   }, [setProjects, t]);
@@ -69,8 +75,14 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     }
     setProjects(prev => prev.filter(p => p.id !== id));
     setWorkEntries(prev => prev.filter(w => w.projectId !== id));
+    setAttendanceRecords(prev => prev.filter(a => a.projectId !== id));
     showToast(t('toast_project_deleted'));
-  }, [setProjects, setWorkEntries, t]);
+  }, [setProjects, setWorkEntries, setAttendanceRecords, t]);
+
+  const updateProjectWorkers = useCallback((projectId: string, workerIds: string[]) => {
+    setProjects(prev => prev.map(p => p.id === projectId ? { ...p, workerIds } : p));
+    showToast(t('toast_team_updated'));
+  }, [setProjects, t]);
 
   const addWorker = useCallback((worker: Omit<Worker, 'id'>) => {
     setWorkers(prev => [...prev, { ...worker, id: Date.now().toString() }]);
@@ -79,13 +91,27 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
 
   const deleteWorker = useCallback((id: string) => {
     setWorkers(prev => prev.filter(w => w.id !== id));
+    
     // Also remove the worker from any work entries
     setWorkEntries(prev => prev.map(entry => ({
       ...entry,
       workerIds: entry.workerIds.filter(workerId => workerId !== id)
     })).filter(entry => entry.workerIds.length > 0)); // Remove entries if no workers are left
+    
+    // Also remove from project teams
+    setProjects(prev => prev.map(p => ({
+      ...p,
+      workerIds: p.workerIds.filter(workerId => workerId !== id)
+    })));
+
+    // Also remove from attendance records
+    setAttendanceRecords(prev => prev.map(ar => ({
+        ...ar,
+        presentWorkerIds: ar.presentWorkerIds.filter(workerId => workerId !== id)
+    })));
+
     showToast(t('toast_worker_deleted'));
-  }, [setWorkers, setWorkEntries, t]);
+  }, [setWorkers, setWorkEntries, setProjects, setAttendanceRecords, t]);
   
   const addWorkEntry = useCallback((entry: Omit<WorkEntry, 'id'>) => {
     const newEntry = {
@@ -105,6 +131,22 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     setWorkEntries(prev => prev.filter(e => e.id !== id));
     showToast(t('toast_entry_deleted'));
   }, [setWorkEntries, t]);
+  
+  const saveAttendance = useCallback((projectId: string, date: string, presentWorkerIds: string[]) => {
+      const id = `${projectId}_${date}`;
+      setAttendanceRecords(prev => {
+          const existingRecordIndex = prev.findIndex(r => r.id === id);
+          const newRecord: AttendanceRecord = { id, projectId, date, presentWorkerIds };
+          if (existingRecordIndex > -1) {
+              const updatedRecords = [...prev];
+              updatedRecords[existingRecordIndex] = newRecord;
+              return updatedRecords;
+          } else {
+              return [newRecord, ...prev];
+          }
+      });
+      showToast(t('toast_attendance_saved'));
+  }, [setAttendanceRecords, t]);
 
   const mergeImportedData = useCallback((data: any, setTheme: (theme: Theme) => void, setLocale: (locale: Locale) => void) => {
     // 1. Merge Projects
@@ -112,7 +154,9 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     if (data.projects) {
         data.projects.forEach((p: Project) => {
             if (p.id === ZARASAI_PROJECT.id) return; // Never overwrite predefined project
-            localProjects.set(p.id, p);
+            // ensure workerIds is present
+            const projectWithDefaults = {...{workerIds: []}, ...p};
+            localProjects.set(p.id, projectWithDefaults);
         });
     }
     if (!localProjects.has(ZARASAI_PROJECT.id)) {
@@ -129,43 +173,45 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     }
     setWorkers(Array.from(localWorkers.values()));
 
-    // 3. Merge Work Entries (with conflict resolution)
+    // 3. Merge Work Entries
     const localWorkEntries = new Map(workEntries.map(e => [e.id, e]));
     if (data.workEntries) {
         data.workEntries.forEach((e: WorkEntry) => {
-            const existingEntry = localWorkEntries.get(e.id);
-            if (existingEntry) {
-                // Conflict: keep the one with the later endTime
-                if (new Date(e.endTime) > new Date(existingEntry.endTime)) {
-                    localWorkEntries.set(e.id, e);
-                }
-            } else {
-                // No conflict, just add it
-                localWorkEntries.set(e.id, e);
-            }
+            localWorkEntries.set(e.id, e);
         });
     }
     setWorkEntries(Array.from(localWorkEntries.values()));
+    
+    // 4. Merge Attendance Records
+    const localAttendance = new Map(attendanceRecords.map(a => [a.id, a]));
+    if (data.attendanceRecords) {
+        data.attendanceRecords.forEach((a: AttendanceRecord) => {
+            localAttendance.set(a.id, a);
+        });
+    }
+    setAttendanceRecords(Array.from(localAttendance.values()));
 
-    // 4. Merge Settings
+    // 5. Merge Settings
     if (data.theme) setTheme(data.theme);
     if (data.locale) setLocale(data.locale);
 
     showToast(t('toast_data_merged'));
     setTimeout(() => window.location.reload(), 1000);
-  }, [projects, workers, workEntries, setProjects, setWorkers, setWorkEntries, showToast, t]);
+  }, [projects, workers, workEntries, attendanceRecords, setProjects, setWorkers, setWorkEntries, setAttendanceRecords, showToast, t]);
 
 
   const value = {
     projects, setProjects,
     workers, setWorkers,
     workEntries, setWorkEntries,
+    attendanceRecords,
     page, setPage,
     toast, showToast,
     loading, setLoading,
-    addProject, deleteProject,
+    addProject, deleteProject, updateProjectWorkers,
     addWorker, deleteWorker,
     addWorkEntry, updateWorkEntry, deleteWorkEntry,
+    saveAttendance,
     mergeImportedData
   };
 

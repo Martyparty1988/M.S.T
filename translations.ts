@@ -29,6 +29,7 @@ const en = {
   // App/Nav
   app_title: "Solar Work Count",
   nav_plan: "Work",
+  nav_attendance: "Attendance",
   nav_records: "Records",
   nav_stats: "Stats",
   nav_settings: "Settings",
@@ -109,6 +110,8 @@ const en = {
   stats_forecast_completion_date: "Predicted Completion Date",
   stats_forecast_remaining_days: "days remaining",
   stats_forecast_rate: "tables / day",
+  stats_todays_attendance: "Today's Attendance",
+  stats_present_workers: "Present Workers",
 
   // Settings Page
   settings_project_management_title: "Project Management",
@@ -134,7 +137,15 @@ const en = {
   settings_data_management_title: "Data Management",
   settings_export_data_button: "Export Data",
   settings_import_data_button: "Import & Merge Data",
+  settings_manage_team_button: "Manage Team",
   
+  // Attendance Page
+  attendance_page_title: "Daily Attendance",
+  attendance_select_date: "Date",
+  attendance_present: "Present",
+  attendance_save_button: "Save Attendance",
+  attendance_no_workers_in_project: "No workers assigned to this project. Add them in Settings.",
+
   // Toasts & Errors
   toast_project_added: "Project added successfully!",
   toast_project_deleted: "Project deleted.",
@@ -150,6 +161,8 @@ const en = {
   toast_data_imported: "Data imported! The app will now reload.",
   toast_data_merged: "Data merged successfully! The app will now reload.",
   toast_import_error: "Error importing data. Please ensure the file is valid.",
+  toast_team_updated: "Project team updated!",
+  toast_attendance_saved: "Attendance saved!",
   error_end_time_before_start: "End time must be after start time.",
   error_select_table: "Please select a table from the project.",
   error_no_tables_in_project: "This project has no defined list of tables.",
@@ -157,6 +170,7 @@ const en = {
 
   // Modals
   edit_modal_save_button: "Save Changes",
+  manage_team_modal_title: "Manage Team for",
   import_confirm_message: "Are you sure you want to import and merge data? New records will be added and existing ones may be updated. This action cannot be undone.",
   
   // Daily Report
@@ -173,6 +187,7 @@ export const translations = {
     // App/Nav
     app_title: "Solar Work Count",
     nav_plan: "Práce",
+    nav_attendance: "Docházka",
     nav_records: "Záznamy",
     nav_stats: "Statistiky",
     nav_settings: "Nastavení",
@@ -253,6 +268,8 @@ export const translations = {
     stats_forecast_completion_date: "Předpokládané datum dokončení",
     stats_forecast_remaining_days: "dní zbývá",
     stats_forecast_rate: "stolů / den",
+    stats_todays_attendance: "Dnešní docházka",
+    stats_present_workers: "Přítomní pracovníci",
 
     // Settings Page
     settings_project_management_title: "Správa projektů",
@@ -278,6 +295,14 @@ export const translations = {
     settings_data_management_title: "Správa dat",
     settings_export_data_button: "Exportovat data",
     settings_import_data_button: "Importovat a sloučit data",
+    settings_manage_team_button: "Spravovat tým",
+    
+    // Attendance Page
+    attendance_page_title: "Denní docházka",
+    attendance_select_date: "Datum",
+    attendance_present: "Přítomen",
+    attendance_save_button: "Uložit docházku",
+    attendance_no_workers_in_project: "K tomuto projektu nejsou přiřazeni žádní pracovníci. Přidejte je v Nastavení.",
 
     // Toasts & Errors
     toast_project_added: "Projekt byl úspěšně přidán!",
@@ -294,6 +319,8 @@ export const translations = {
     toast_data_imported: "Data naimportována! Aplikace se restartuje.",
     toast_data_merged: "Data byla úspěšně sloučena! Aplikace se restartuje.",
     toast_import_error: "Chyba při importu dat. Ujistěte se, že soubor je platný.",
+    toast_team_updated: "Tým projektu byl aktualizován!",
+    toast_attendance_saved: "Docházka uložena!",
     error_end_time_before_start: "Čas ukončení musí být po čase začátku.",
     error_select_table: "Vyberte prosím stůl z projektu.",
     error_no_tables_in_project: "Tento projekt nemá definovaný seznam stolů.",
@@ -301,6 +328,7 @@ export const translations = {
 
     // Modals
     edit_modal_save_button: "Uložit změny",
+    manage_team_modal_title: "Spravovat tým pro",
     import_confirm_message: "Opravdu chcete sloučit data? Nové záznamy budou přidány a existující mohou být aktualizovány. Tuto akci nelze vrátit zpět.",
 
     // Daily Report
@@ -315,6 +343,7 @@ export const translations = {
   lt: {
     ...en,
     nav_plan: "Darbas",
+    nav_attendance: "Lankomumas",
     nav_records: "Įrašai",
     nav_stats: "Statistika",
     nav_settings: "Nustatymai",

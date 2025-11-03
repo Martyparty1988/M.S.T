@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
 import { useTheme } from '../context/ThemeContext';
 import { Theme, ProjectStatus, Project } from '../types';
 import type { Locale } from '../translations';
+import ManageTeamModal from '../components/ManageTeamModal';
 
 const SettingsCard: React.FC<{title: string, children: React.ReactNode}> = ({title, children}) => (
     <div className="floating-card p-5">
@@ -21,6 +22,9 @@ const SettingsPage: React.FC = () => {
   const { t, locale, setLocale } = useI18n();
   const { theme, setTheme } = useTheme();
 
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+  const [projectToManage, setProjectToManage] = useState<Project | null>(null);
+
   const formInputStyle = "w-full bg-white/10 text-white p-3 rounded-xl border border-white/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] focus:border-[var(--accent-color)] transition text-base font-normal";
   const formLabelStyle = "block mb-2 text-sm font-medium text-white/70";
   const primaryButtonStyle = "w-full bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition duration-200 ease-in-out transform hover:scale-105 active:scale-95 shadow-lg";
@@ -32,6 +36,11 @@ const SettingsPage: React.FC = () => {
       { id: 'crimson', name: t('settings_theme_crimson'), colors: ['#f97316', '#dc2626'] }
   ];
 
+  const handleOpenTeamModal = (project: Project) => {
+    setProjectToManage(project);
+    setIsTeamModalOpen(true);
+  };
+
   const handleAddProject = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -42,7 +51,7 @@ const SettingsPage: React.FC = () => {
     const tables = tablesRaw.split(/[\n,]/).map(s => s.trim()).filter(Boolean);
 
     if (name && status) {
-        const newProject: Omit<Project, 'id'> = { name, status, tables };
+        const newProject: Omit<Project, 'id' | 'workerIds'> = { name, status, tables };
         addProject(newProject);
         (e.target as HTMLFormElement).reset();
     }
@@ -85,7 +94,7 @@ const SettingsPage: React.FC = () => {
 
   const handleExportData = () => {
     const dataToExport: { [key: string]: any } = {};
-    const keysToExport = [ 'projects', 'workers', 'workEntries', 'locale', 'theme' ];
+    const keysToExport = [ 'projects', 'workers', 'workEntries', 'attendanceRecords', 'locale', 'theme' ];
     
     keysToExport.forEach(key => {
         const item = localStorage.getItem(key);
@@ -133,100 +142,112 @@ const SettingsPage: React.FC = () => {
   };
 
   return (
-    <div className="h-full w-full p-4 overflow-y-auto space-y-6">
-      <SettingsCard title={t('settings_theme_title')}>
-        <div className="grid grid-cols-2 gap-4">
-            {themes.map(item => (
-                <button
-                    key={item.id}
-                    onClick={() => setTheme(item.id)}
-                    className={`p-2 rounded-xl border-2 transition-all duration-200 ease-in-out active:scale-95 ${theme === item.id ? 'border-[var(--accent-color)] shadow-lg' : 'border-transparent hover:border-white/20'}`}
-                >
-                    <div className="w-full h-10 rounded-lg" style={{ background: `linear-gradient(to right, ${item.colors[0]}, ${item.colors[1]})` }}></div>
-                    <p className="mt-2 text-center text-sm font-medium">{item.name}</p>
-                </button>
-            ))}
-        </div>
-      </SettingsCard>
-
-      <SettingsCard title={t('settings_language_title')}>
-        <select
-          value={locale}
-          onChange={(e) => setLocale(e.target.value as Locale)}
-          className={formInputStyle}
-        >
-          <option value="cs">Čeština</option>
-          <option value="en">English</option>
-          <option value="lt">Lietuvių</option>
-        </select>
-      </SettingsCard>
-      
-      <SettingsCard title={t('settings_project_management_title')}>
-        <form onSubmit={handleAddProject} className="space-y-4 mb-4">
-          <input type="text" name="projectName" placeholder={t('settings_project_name_placeholder')} required className={formInputStyle} />
-          <div>
-            <label className={formLabelStyle}>{t('settings_project_status_label')}</label>
-            <select name="projectStatus" defaultValue="active" required className={formInputStyle}>
-                <option value="active">{t('settings_project_status_active')}</option>
-                <option value="completed">{t('settings_project_status_completed')}</option>
-                <option value="paused">{t('settings_project_status_paused')}</option>
-            </select>
+    <>
+      <div className="h-full w-full p-4 overflow-y-auto space-y-6 scrolling-touch">
+        <SettingsCard title={t('settings_theme_title')}>
+          <div className="grid grid-cols-2 gap-4">
+              {themes.map(item => (
+                  <button
+                      key={item.id}
+                      onClick={() => setTheme(item.id)}
+                      className={`p-2 rounded-xl border-2 transition-all duration-200 ease-in-out active:scale-95 ${theme === item.id ? 'border-[var(--accent-color)] shadow-lg' : 'border-transparent hover:border-white/20'}`}
+                  >
+                      <div className="w-full h-10 rounded-lg" style={{ background: `linear-gradient(to right, ${item.colors[0]}, ${item.colors[1]})` }}></div>
+                      <p className="mt-2 text-center text-sm font-medium">{item.name}</p>
+                  </button>
+              ))}
           </div>
-           <div>
-            <label className={formLabelStyle}>{t('settings_project_tables_label')}</label>
-            <textarea name="projectTables" placeholder='1, 2, 3.1, 4...' rows={4} className={formInputStyle}></textarea>
-          </div>
-          <button type="submit" className={primaryButtonStyle}>{t('settings_add_project_button')}</button>
-        </form>
-        <div className="space-y-2 max-h-48 overflow-y-auto">
-            {projects.map(p => (
-                <div key={p.id} className="bg-white/5 p-3 rounded-lg flex justify-between items-center">
-                    <div>
-                        <span className="font-semibold text-base">{p.name}</span>
-                        <span className="ml-2 text-xs bg-white/10 text-white/70 px-2 py-1 rounded-full capitalize">{p.status}</span>
-                    </div>
-                    {p.id !== 'zarasai_predefined' && (
-                        <button onClick={() => deleteProject(p.id)} className="text-white/40 hover:text-red-500 font-bold text-xl px-2 transition active:scale-90">&times;</button>
-                    )}
-                </div>
-            ))}
-        </div>
-      </SettingsCard>
+        </SettingsCard>
 
-      <SettingsCard title={t('settings_worker_management_title')}>
-        <form onSubmit={handleAddWorker} className="space-y-4 mb-4">
-          <input type="text" name="workerName" placeholder={t('settings_worker_name_placeholder')} required className={formInputStyle} />
-          <input type="number" step="0.01" name="workerRate" placeholder={t('settings_worker_rate_placeholder')} required className={formInputStyle} />
-          <button type="submit" className={primaryButtonStyle}>{t('settings_add_worker_button')}</button>
-        </form>
-        <div className="space-y-2 max-h-48 overflow-y-auto">
-            {workers.map(w => (
-                <div key={w.id} className="bg-white/5 p-3 rounded-lg flex justify-between items-center">
-                    <span className="font-semibold text-base">{w.name} (€{w.rate}/hr)</span>
-                    <button onClick={() => deleteWorker(w.id)} className="text-white/40 hover:text-red-500 font-bold text-xl px-2 transition active:scale-90">&times;</button>
-                </div>
-            ))}
-        </div>
-      </SettingsCard>
-      
-      <SettingsCard title={t('settings_data_management_title')}>
-        <div className="space-y-4">
-            <button onClick={handleExportData} className="w-full bg-gradient-to-r from-sky-500 to-indigo-500 hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition transform hover:scale-105 active:scale-95 shadow-lg">
-                {t('settings_export_data_button')}
-            </button>
+        <SettingsCard title={t('settings_language_title')}>
+          <select
+            value={locale}
+            onChange={(e) => setLocale(e.target.value as Locale)}
+            className={formInputStyle}
+          >
+            <option value="cs">Čeština</option>
+            <option value="en">English</option>
+            <option value="lt">Lietuvių</option>
+          </select>
+        </SettingsCard>
+        
+        <SettingsCard title={t('settings_project_management_title')}>
+          <form onSubmit={handleAddProject} className="space-y-4 mb-4">
+            <input type="text" name="projectName" placeholder={t('settings_project_name_placeholder')} required className={formInputStyle} />
             <div>
-              <input type="file" id="importFile" accept="application/json" className="hidden" onChange={handleImportData} />
-              <label htmlFor="importFile" className="w-full block text-center bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition transform hover:scale-105 active:scale-95 shadow-lg cursor-pointer">
-                  {t('settings_import_data_button')}
-              </label>
+              <label className={formLabelStyle}>{t('settings_project_status_label')}</label>
+              <select name="projectStatus" defaultValue="active" required className={formInputStyle}>
+                  <option value="active">{t('settings_project_status_active')}</option>
+                  <option value="completed">{t('settings_project_status_completed')}</option>
+                  <option value="paused">{t('settings_project_status_paused')}</option>
+              </select>
             </div>
-        </div>
-      </SettingsCard>
+            <div>
+              <label className={formLabelStyle}>{t('settings_project_tables_label')}</label>
+              <textarea name="projectTables" placeholder='1, 2, 3.1, 4...' rows={4} className={formInputStyle}></textarea>
+            </div>
+            <button type="submit" className={primaryButtonStyle}>{t('settings_add_project_button')}</button>
+          </form>
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+              {projects.map(p => (
+                  <div key={p.id} className="bg-white/5 p-3 rounded-lg flex justify-between items-center">
+                      <div className="flex-1">
+                          <span className="font-semibold text-base">{p.name}</span>
+                          <span className="ml-2 text-xs bg-white/10 text-white/70 px-2 py-1 rounded-full capitalize">{p.status}</span>
+                      </div>
+                      {p.id !== 'zarasai_predefined' && (
+                          <div className="flex items-center">
+                              <button onClick={() => handleOpenTeamModal(p)} className="text-sm bg-white/10 hover:bg-white/20 text-white/80 font-semibold px-3 py-1 rounded-lg transition active:scale-95 mr-2">{t('settings_manage_team_button')}</button>
+                              <button onClick={() => deleteProject(p.id)} className="text-white/40 hover:text-red-500 font-bold text-xl px-2 transition active:scale-90">&times;</button>
+                          </div>
+                      )}
+                  </div>
+              ))}
+          </div>
+        </SettingsCard>
 
-      <SettingsCard title={t('settings_actions_title')}>
-        <button onClick={generateDailyReport} className="w-full bg-gradient-to-r from-green-500 to-teal-500 hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition transform hover:scale-105 active:scale-95 shadow-lg">{t('settings_generate_report_button')}</button>
-      </SettingsCard>
-    </div>
+        <SettingsCard title={t('settings_worker_management_title')}>
+          <form onSubmit={handleAddWorker} className="space-y-4 mb-4">
+            <input type="text" name="workerName" placeholder={t('settings_worker_name_placeholder')} required className={formInputStyle} />
+            <input type="number" step="0.01" name="workerRate" placeholder={t('settings_worker_rate_placeholder')} required className={formInputStyle} />
+            <button type="submit" className={primaryButtonStyle}>{t('settings_add_worker_button')}</button>
+          </form>
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+              {workers.map(w => (
+                  <div key={w.id} className="bg-white/5 p-3 rounded-lg flex justify-between items-center">
+                      <span className="font-semibold text-base">{w.name} (€{w.rate}/hr)</span>
+                      <button onClick={() => deleteWorker(w.id)} className="text-white/40 hover:text-red-500 font-bold text-xl px-2 transition active:scale-90">&times;</button>
+                  </div>
+              ))}
+          </div>
+        </SettingsCard>
+        
+        <SettingsCard title={t('settings_data_management_title')}>
+          <div className="space-y-4">
+              <button onClick={handleExportData} className="w-full bg-gradient-to-r from-sky-500 to-indigo-500 hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition transform hover:scale-105 active:scale-95 shadow-lg">
+                  {t('settings_export_data_button')}
+              </button>
+              <div>
+                <input type="file" id="importFile" accept="application/json" className="hidden" onChange={handleImportData} />
+                <label htmlFor="importFile" className="w-full block text-center bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition transform hover:scale-105 active:scale-95 shadow-lg cursor-pointer">
+                    {t('settings_import_data_button')}
+                </label>
+              </div>
+          </div>
+        </SettingsCard>
+
+        <SettingsCard title={t('settings_actions_title')}>
+          <button onClick={generateDailyReport} className="w-full bg-gradient-to-r from-green-500 to-teal-500 hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition transform hover:scale-105 active:scale-95 shadow-lg">{t('settings_generate_report_button')}</button>
+        </SettingsCard>
+      </div>
+      {projectToManage && (
+          <ManageTeamModal 
+            isOpen={isTeamModalOpen}
+            onClose={() => setIsTeamModalOpen(false)}
+            project={projectToManage}
+          />
+      )}
+    </>
   );
 };
 

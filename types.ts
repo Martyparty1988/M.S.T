@@ -1,4 +1,4 @@
-export type Page = 'plan' | 'records' | 'stats' | 'settings';
+export type Page = 'plan' | 'attendance' | 'records' | 'stats' | 'settings';
 export type Theme = 'dusk' | 'slate' | 'forest' | 'crimson';
 
 export interface Worker {
@@ -14,6 +14,14 @@ export interface Project {
   name: string;
   status: ProjectStatus;
   tables: string[];
+  workerIds: string[];
+}
+
+export interface AttendanceRecord {
+  id: string; // Composite key, e.g., `${projectId}_${date}`
+  projectId: string;
+  date: string; // YYYY-MM-DD
+  presentWorkerIds: string[];
 }
 
 interface BaseWorkEntry {

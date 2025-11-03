@@ -261,7 +261,7 @@ const RecordsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-grow overflow-y-auto space-y-4">
+      <div className="flex-grow overflow-y-auto space-y-4 scrolling-touch">
           {isLoading ? (
             Array.from({ length: 5 }).map((_, index) => <SkeletonCard key={index} />)
           ) : (

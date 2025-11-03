@@ -14,7 +14,7 @@ const StatCard: React.FC<{title: string; value: string | number; subValue?: stri
 )
 
 const StatsPage: React.FC = () => {
-  const { workEntries, workers, projects } = useAppContext();
+  const { workEntries, workers, projects, attendanceRecords } = useAppContext();
   const { t, locale } = useI18n();
   const { theme } = useTheme();
 
@@ -45,6 +45,17 @@ const StatsPage: React.FC = () => {
   const selectedProject = useMemo(() => {
       return projects.find(p => p.id === selectedProjectId);
   }, [projects, selectedProjectId]);
+
+  const todaysAttendance = useMemo(() => {
+      if (!selectedProject || !selectedProject.workerIds || selectedProject.workerIds.length === 0) {
+          return null;
+      }
+      const today = new Date().toISOString().slice(0, 10);
+      const record = attendanceRecords.find(r => r.projectId === selectedProject.id && r.date === today);
+      const presentCount = record ? record.presentWorkerIds.length : 0;
+      const totalCount = selectedProject.workerIds.length;
+      return { presentCount, totalCount };
+  }, [selectedProject, attendanceRecords]);
   
   const projectStats = useMemo(() => {
       if (!selectedProject) return null;
@@ -139,7 +150,7 @@ const StatsPage: React.FC = () => {
   const formInputStyle = "w-full bg-white/10 text-white p-3 rounded-xl border border-white/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] focus:border-[var(--accent-color)] transition text-base font-normal";
 
   return (
-    <div className="h-full w-full p-4 overflow-y-auto space-y-6">
+    <div className="h-full w-full p-4 overflow-y-auto space-y-6 scrolling-touch">
       <div className="floating-card p-5">
           <label className="block mb-2 text-sm font-medium text-white/70">{t('stats_select_project_label')}</label>
           <select value={selectedProjectId} onChange={e => setSelectedProjectId(e.target.value)} className={formInputStyle}>
@@ -165,14 +176,19 @@ const StatsPage: React.FC = () => {
           </div>
       )}
 
-      {projectStats && selectedProject && (
-          <div className="grid grid-cols-2 gap-4">
-              <StatCard title={t('stats_table_completion')} value={`${projectStats.completedTables} / ${projectStats.totalTables}`} subValue={`${projectStats.remainingTables} ${t('stats_remaining')}`} />
-              <StatCard title={t('stats_work_distribution')} value={projectStats.panelingCount} subValue={`${t('work_task_paneling')} / ${projectStats.hourlyCount} ${t('work_type_hourly')}`} />
-              <StatCard title={t('stats_paneling_performance')} value={projectStats.avgModulesPerHour} subValue={t('stats_avg_mods_per_hour')} />
-              <StatCard title={t('stats_top_worker')} value={projectStats.topWorkerName} subValue={projectStats.topWorkerCount} />
-          </div>
-      )}
+      <div className="grid grid-cols-2 gap-4">
+          {projectStats && selectedProject && (
+              <>
+                  <StatCard title={t('stats_table_completion')} value={`${projectStats.completedTables} / ${projectStats.totalTables}`} subValue={`${projectStats.remainingTables} ${t('stats_remaining')}`} />
+                  <StatCard title={t('stats_work_distribution')} value={projectStats.panelingCount} subValue={`${t('work_task_paneling')} / ${projectStats.hourlyCount} ${t('work_type_hourly')}`} />
+                  <StatCard title={t('stats_paneling_performance')} value={projectStats.avgModulesPerHour} subValue={t('stats_avg_mods_per_hour')} />
+                  <StatCard title={t('stats_top_worker')} value={projectStats.topWorkerName} subValue={projectStats.topWorkerCount} />
+              </>
+          )}
+          {todaysAttendance && (
+               <StatCard title={t('stats_todays_attendance')} value={`${todaysAttendance.presentCount} / ${todaysAttendance.totalCount}`} subValue={t('stats_present_workers')} />
+          )}
+      </div>
 
       <div className="floating-card p-5">
         <h2 className="text-xl font-bold mb-4 text-center text-white">{t('stats_earnings_by_worker_title')}</h2>

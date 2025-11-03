@@ -350,7 +350,7 @@ const PlanPage: React.FC = () => {
     }
     
     return (
-        <div className="h-full w-full flex flex-col overflow-y-auto p-4 space-y-6">
+        <div className="h-full w-full flex flex-col overflow-y-auto p-4 space-y-6 scrolling-touch">
             {step === 'project' && (
                 <div className="space-y-4">
                     <h2 className="text-2xl font-bold text-center text-white">{t('work_step1_title')}</h2>

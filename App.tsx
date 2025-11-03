@@ -3,6 +3,7 @@ import { AppProvider, useAppContext } from './context/AppContext';
 import { I18nProvider, useI18n } from './context/I18nContext';
 import { ThemeProvider } from './context/ThemeContext';
 import PlanPage from './pages/PlanPage';
+import AttendancePage from './pages/AttendancePage';
 import RecordsPage from './pages/RecordsPage';
 import StatsPage from './pages/StatsPage';
 import SettingsPage from './pages/SettingsPage';
@@ -11,7 +12,7 @@ import Loader from './components/Loader';
 import Toast from './components/Toast';
 import { Page } from './types';
 
-const pageOrder: Page[] = ['plan', 'records', 'stats', 'settings'];
+const pageOrder: Page[] = ['plan', 'attendance', 'records', 'stats', 'settings'];
 
 const AppContent: React.FC = () => {
   const { page, loading, toast } = useAppContext();
@@ -38,6 +39,8 @@ const AppContent: React.FC = () => {
     switch (page) {
       case 'plan':
         return <PlanPage />;
+      case 'attendance':
+        return <AttendancePage />;
       case 'records':
         return <RecordsPage />;
       case 'stats':
@@ -60,8 +63,10 @@ const AppContent: React.FC = () => {
         </h1>
       </header>
 
-      <main className={`flex-grow overflow-hidden relative ${animationClass}`}>
-        {renderPage()}
+      <main className="flex-grow relative overflow-hidden">
+        <div className={`absolute inset-0 ${animationClass}`}>
+          {renderPage()}
+        </div>
       </main>
       
       <BottomNav />
