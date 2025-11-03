@@ -73,6 +73,17 @@ const WorkLogForm: React.FC<{
             onClose();
         }
     };
+
+    const handleStartTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newStartTime = e.target.value;
+        setStartTime(newStartTime);
+        if (newStartTime && !endTime) {
+            const start = new Date(newStartTime);
+            start.setHours(start.getHours() + 9);
+            const newEndTime = start.toISOString().slice(0, 16);
+            setEndTime(newEndTime);
+        }
+    };
     
     const completedTables = useMemo(() => new Set(
         workEntries
@@ -181,7 +192,7 @@ const WorkLogForm: React.FC<{
                             </div>
                             <div>
                                 <label className={formLabelStyle}>{t('work_start_time_label')}</label>
-                                <input type="datetime-local" value={startTime} onChange={e => setStartTime(e.target.value)} required className={formInputStyle} />
+                                <input type="datetime-local" value={startTime} onChange={handleStartTimeChange} required className={formInputStyle} />
                             </div>
                              <div>
                                 <label className={formLabelStyle}>{t('work_end_time_label')}</label>

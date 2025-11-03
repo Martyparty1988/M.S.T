@@ -113,6 +113,7 @@ const en = {
   records_all_workers: "All Workers",
   records_loading: "Loading records...",
   records_size_missing_warning: "SIZE MISSING",
+  records_toggle_day_visibility: "Toggle day visibility",
   
   // Payroll Page
   payroll_page_title: "Worker Payroll & Performance",
@@ -145,6 +146,8 @@ const en = {
   payroll_small_tables: "Small",
   payroll_medium_tables: "Medium",
   payroll_large_tables: "Large",
+  payroll_earnings_comparison_chart_title: "Earnings Comparison",
+  payroll_earnings_breakdown_chart_title: "Earnings Breakdown",
 
   // Settings Page
   settings_project_management_title: "Project Management",
@@ -320,6 +323,7 @@ export const translations = {
     records_all_workers: "Všichni pracovníci",
     records_loading: "Načítání záznamů...",
     records_size_missing_warning: "CHYBÍ VELIKOST",
+    records_toggle_day_visibility: "Přepnout viditelnost dne",
     
     // Payroll Page
     payroll_page_title: "Mzdy a výkon pracovníků",
@@ -352,6 +356,8 @@ export const translations = {
     payroll_small_tables: "Malé",
     payroll_medium_tables: "Střední",
     payroll_large_tables: "Velké",
+    payroll_earnings_comparison_chart_title: "Srovnání výdělků",
+    payroll_earnings_breakdown_chart_title: "Rozpad výdělků",
 
     // Settings Page
     settings_project_management_title: "Správa projektů",

@@ -151,13 +151,14 @@ const EditWorkEntryModal: React.FC<EditWorkEntryModalProps> = ({ isOpen, onClose
 
 const RecordsPage: React.FC = () => {
   const { workEntries, workers, projects, deleteWorkEntry } = useAppContext();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   
   const [isLoading, setIsLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<WorkEntry | null>(null);
   const [selectedWorkerFilterId, setSelectedWorkerFilterId] = useState<string>('');
   const [tableSearchQuery, setTableSearchQuery] = useState('');
+  const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set());
   
   const formInputStyle = "w-full bg-white/10 text-white p-3 rounded-xl border border-white/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] focus:border-[var(--accent-color)] transition text-base font-normal";
   
@@ -170,11 +171,24 @@ const RecordsPage: React.FC = () => {
     setEditingEntry(entry);
     setIsEditModalOpen(true);
   };
+  
+  const toggleDay = (date: string) => {
+    setCollapsedDays(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(date)) {
+            newSet.delete(date);
+        } else {
+            newSet.add(date);
+        }
+        return newSet;
+    });
+  };
 
   const getWorkerNames = (ids: string[]) => ids.map(id => workers.find(w => w.id === id)?.name || t('records_unknown_worker')).join(', ');
   const getProjectName = (id: string) => projects.find(p => p.id === id)?.name || t('records_unknown_project');
   
-  const sortedAndFilteredEntries = useMemo(() => {
+  // FIX: Explicitly setting the return type for useMemo to fix a type inference issue where `entries` was `unknown`.
+  const groupedAndFilteredEntries = useMemo((): Record<string, WorkEntry[]> => {
     let filtered = [...workEntries];
 
     if (selectedWorkerFilterId) {
@@ -209,9 +223,27 @@ const RecordsPage: React.FC = () => {
         }
     }
     
-    return filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const sorted = filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    return sorted.reduce((acc, entry) => {
+        const dateKey = new Date(entry.date).toISOString().split('T')[0];
+        if (!acc[dateKey]) {
+            acc[dateKey] = [];
+        }
+        acc[dateKey].push(entry);
+        return acc;
+    }, {} as Record<string, WorkEntry[]>);
+
   }, [workEntries, selectedWorkerFilterId, tableSearchQuery]);
   
+  useEffect(() => {
+    // Collapse all but the first day by default
+    const dateKeys = Object.keys(groupedAndFilteredEntries);
+    if (dateKeys.length > 1) {
+        setCollapsedDays(new Set(dateKeys.slice(1)));
+    }
+  }, [groupedAndFilteredEntries]);
+
   const renderEntryDetails = (entry: WorkEntry) => {
     const textStyle = "text-sm text-white/70 font-normal";
     const valueStyle = "font-semibold text-white";
@@ -270,32 +302,52 @@ const RecordsPage: React.FC = () => {
           {isLoading ? (
             Array.from({ length: 5 }).map((_, index) => <SkeletonCard key={index} />)
           ) : (
-            sortedAndFilteredEntries.map(entry => (
-              <div key={entry.id} className="floating-card p-5 flex justify-between items-center transition duration-200 ease-in-out hover:bg-white/20">
-                <div className="flex-grow">
-                    <div className="flex justify-between items-start">
-                        <p className="font-semibold text-white text-base">{getWorkerNames(entry.workerIds)}</p>
-                        <p className="text-sm text-white/70">{entry.duration.toFixed(2)} {t('records_hours_unit')}</p>
-                    </div>
-                    <p className="text-xs text-[var(--accent-color-light)] font-medium">{getProjectName(entry.projectId)}</p>
-                    <div className="mt-1">
-                        {renderEntryDetails(entry)}
-                    </div>
-                  <p className="text-xs text-white/40 pt-1">{new Date(entry.date).toLocaleString()}</p>
+            Object.entries(groupedAndFilteredEntries).map(([date, entries]) => (
+                <div key={date}>
+                    <button 
+                        onClick={() => toggleDay(date)}
+                        className="w-full flex justify-between items-center bg-white/5 p-3 rounded-lg text-left mb-2 sticky top-0 backdrop-blur-sm"
+                        aria-label={t('records_toggle_day_visibility')}
+                    >
+                        <h3 className="font-bold text-lg text-white">
+                            {new Date(date).toLocaleDateString(locale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                        </h3>
+                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-white transition-transform ${collapsedDays.has(date) ? 'rotate-0' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                    {!collapsedDays.has(date) && (
+                        <div className="space-y-4">
+                        {entries.map(entry => (
+                            <div key={entry.id} className="floating-card p-5 flex justify-between items-center transition duration-200 ease-in-out hover:bg-white/20">
+                                <div className="flex-grow">
+                                    <div className="flex justify-between items-start">
+                                        <p className="font-semibold text-white text-base">{getWorkerNames(entry.workerIds)}</p>
+                                        <p className="text-sm text-white/70">{entry.duration.toFixed(2)} {t('records_hours_unit')}</p>
+                                    </div>
+                                    <p className="text-xs text-[var(--accent-color-light)] font-medium">{getProjectName(entry.projectId)}</p>
+                                    <div className="mt-1">
+                                        {renderEntryDetails(entry)}
+                                    </div>
+                                    <p className="text-xs text-white/40 pt-1">{new Date(entry.date).toLocaleString()}</p>
+                                </div>
+                                <div className="flex items-center self-start">
+                                <button onClick={() => handleEdit(entry)} className="text-white/40 hover:text-[var(--accent-color)] p-2 transition duration-200 ease-in-out active:scale-95">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z" />
+                                    </svg>
+                                </button>
+                                <button onClick={() => deleteWorkEntry(entry.id)} className="text-white/40 hover:text-red-500 p-2 ml-1 transition duration-200 ease-in-out active:scale-95">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                                </div>
+                            </div>
+                        ))}
+                        </div>
+                    )}
                 </div>
-                <div className="flex items-center self-start">
-                  <button onClick={() => handleEdit(entry)} className="text-white/40 hover:text-[var(--accent-color)] p-2 transition duration-200 ease-in-out active:scale-95">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z" />
-                    </svg>
-                  </button>
-                  <button onClick={() => deleteWorkEntry(entry.id)} className="text-white/40 hover:text-red-500 p-2 ml-1 transition duration-200 ease-in-out active:scale-95">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
             ))
           )}
       </div>

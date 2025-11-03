@@ -2,6 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
 import { Worker, WorkEntry, PanelingWorkEntry, CablesWorkEntry } from '../types';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, Legend } from 'recharts';
+
 
 interface WorkerStats {
     id: string;
@@ -41,10 +43,17 @@ const StatRow: React.FC<{ label: string, performance: string, earnings: string }
     </div>
 );
 
+const COLORS = ['#a855f7', '#fb923c', '#84cc16', '#ef4444', '#3b82f6'];
 
 const WorkerPayrollCard: React.FC<{ data: WorkerStats }> = ({ data }) => {
     const { t } = useI18n();
     const [isExpanded, setIsExpanded] = useState(false);
+
+    const pieData = [
+        { name: t('payroll_hourly_work'), value: data.hourly.earnings + data.construction.earnings },
+        { name: t('payroll_paneling_work'), value: data.paneling.earnings },
+        { name: t('payroll_cables_work'), value: data.cables.earnings },
+    ].filter(item => item.value > 0);
 
     return (
         <div 
@@ -62,41 +71,57 @@ const WorkerPayrollCard: React.FC<{ data: WorkerStats }> = ({ data }) => {
             </div>
             {isExpanded && (
                 <div className="mt-4 pt-4 border-t border-white/20 space-y-2">
-                    <h4 className="text-lg font-semibold text-white/90 mb-2">{t('payroll_details_title')}</h4>
-                    <StatRow 
-                        label={t('payroll_avg_hourly_wage')}
-                        performance={`${data.totalHours.toFixed(2)} ${t('records_hours_unit')}`}
-                        earnings={`€${data.avgHourlyWage.toFixed(2)}`}
-                    />
-                    <StatRow 
-                        label={t('payroll_hourly_work')}
-                        performance={`${data.hourly.hours.toFixed(2)} ${t('records_hours_unit')}`}
-                        earnings={`€${data.hourly.earnings.toFixed(2)}`}
-                    />
-                     <StatRow 
-                        label={t('work_task_construction')}
-                        performance={`${data.construction.hours.toFixed(2)} ${t('records_hours_unit')}`}
-                        earnings={`€${data.construction.earnings.toFixed(2)}`}
-                    />
-                     <StatRow 
-                        label={t('payroll_paneling_work')}
-                        performance={`${data.paneling.panels.toFixed(0)} ${t('records_modules_label')}`}
-                        earnings={`€${data.paneling.earnings.toFixed(2)}`}
-                    />
-                     <StatRow 
-                        label={t('payroll_cables_work')}
-                        performance={`${data.cables.tables.total.toFixed(2)} ${t('payroll_total_tables')}`}
-                        earnings={`€${data.cables.earnings.toFixed(2)}`}
-                    />
-                    <div className="pl-4">
-                        <p className="text-sm text-white/70">{t('payroll_tables_per_hour')}: <span className="font-semibold text-white">{data.cables.tablesPerHour.toFixed(2)}</span></p>
-                        <p className="text-sm text-white/70">{t('payroll_euros_per_table')}: <span className="font-semibold text-white">€{data.cables.eurosPerTable.toFixed(2)}</span></p>
-                        <p className="text-sm text-white/70">{t('payroll_shared_tables_percent')}: <span className="font-semibold text-white">{data.cables.sharedTablesPercent.toFixed(1)}%</span></p>
-                        <p className="text-sm text-white/70">{t('payroll_tables_split')}: 
-                            <span className="font-semibold text-white"> S:</span> {data.cables.tables.small.toFixed(2)}
-                            <span className="font-semibold text-white"> M:</span> {data.cables.tables.medium.toFixed(2)}
-                            <span className="font-semibold text-white"> L:</span> {data.cables.tables.large.toFixed(2)}
-                        </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <h4 className="text-lg font-semibold text-white/90 mb-2">{t('payroll_details_title')}</h4>
+                            <StatRow 
+                                label={t('payroll_avg_hourly_wage')}
+                                performance={`${data.totalHours.toFixed(2)} ${t('records_hours_unit')}`}
+                                earnings={`€${data.avgHourlyWage.toFixed(2)}`}
+                            />
+                            <StatRow 
+                                label={t('payroll_hourly_work')}
+                                performance={`${data.hourly.hours.toFixed(2)} ${t('records_hours_unit')}`}
+                                earnings={`€${data.hourly.earnings.toFixed(2)}`}
+                            />
+                             <StatRow 
+                                label={t('work_task_construction')}
+                                performance={`${data.construction.hours.toFixed(2)} ${t('records_hours_unit')}`}
+                                earnings={`€${data.construction.earnings.toFixed(2)}`}
+                            />
+                             <StatRow 
+                                label={t('payroll_paneling_work')}
+                                performance={`${data.paneling.panels.toFixed(0)} ${t('records_modules_label')}`}
+                                earnings={`€${data.paneling.earnings.toFixed(2)}`}
+                            />
+                             <StatRow 
+                                label={t('payroll_cables_work')}
+                                performance={`${data.cables.tables.total.toFixed(2)} ${t('payroll_total_tables')}`}
+                                earnings={`€${data.cables.earnings.toFixed(2)}`}
+                            />
+                            <div className="pl-4 mt-2">
+                                <p className="text-sm text-white/70">{t('payroll_tables_per_hour')}: <span className="font-semibold text-white">{data.cables.tablesPerHour.toFixed(2)}</span></p>
+                                <p className="text-sm text-white/70">{t('payroll_euros_per_table')}: <span className="font-semibold text-white">€{data.cables.eurosPerTable.toFixed(2)}</span></p>
+                                <p className="text-sm text-white/70">{t('payroll_shared_tables_percent')}: <span className="font-semibold text-white">{data.cables.sharedTablesPercent.toFixed(1)}%</span></p>
+                                <p className="text-sm text-white/70">{t('payroll_tables_split')}: 
+                                    <span className="font-semibold text-white"> S:</span> {data.cables.tables.small.toFixed(2)}
+                                    <span className="font-semibold text-white"> M:</span> {data.cables.tables.medium.toFixed(2)}
+                                    <span className="font-semibold text-white"> L:</span> {data.cables.tables.large.toFixed(2)}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex flex-col items-center justify-center">
+                            <h4 className="text-lg font-semibold text-white/90 mb-2">{t('payroll_earnings_breakdown_chart_title')}</h4>
+                            <ResponsiveContainer width="100%" height={200}>
+                                <PieChart>
+                                    <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} fill="#8884d8" label>
+                                        {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                                    </Pie>
+                                    <Tooltip contentStyle={{ backgroundColor: 'rgba(20, 20, 40, 0.8)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px' }} />
+                                    <Legend />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
                 </div>
             )}
@@ -216,7 +241,7 @@ const PayrollPage: React.FC = () => {
             });
         });
         
-        return Object.values(stats)
+        const allStatsWithCalcs = Object.values(stats)
             .map((s: any) => ({
                 ...s,
                 avgHourlyWage: s.totalHours > 0 ? s.totalEarnings / s.totalHours : 0,
@@ -226,9 +251,13 @@ const PayrollPage: React.FC = () => {
                     eurosPerTable: s.cables.tables.total > 0 ? s.cables.earnings / s.cables.tables.total : 0,
                     sharedTablesPercent: s.cables.totalEntryCount > 0 ? (s.cables.sharedEntryCount / s.cables.totalEntryCount) * 100 : 0,
                 }
-            }))
-            .filter(s => s.totalEarnings > 0)
-            .sort((a,b) => b.totalEarnings - a.totalEarnings) as WorkerStats[];
+            }));
+        
+        const finalStats = selectedWorkerIds.size > 0
+            ? allStatsWithCalcs.filter(s => selectedWorkerIds.has(s.id))
+            : allStatsWithCalcs.filter(s => s.totalEarnings > 0);
+
+        return finalStats.sort((a,b) => b.totalEarnings - a.totalEarnings) as WorkerStats[];
 
     }, [workEntries, workers, selectedProjectId, dateRange, selectedWorkerIds, selectedWorkTypes]);
 
@@ -263,6 +292,8 @@ const PayrollPage: React.FC = () => {
     };
 
     const workTypeOptions = ['hourly', 'paneling', 'construction', 'cables'];
+
+    const chartData = stats.map(s => ({ name: s.name.split(' ')[0], earnings: s.totalEarnings }));
 
     return (
         <div className="h-full w-full p-4 flex flex-col overflow-hidden">
@@ -313,7 +344,28 @@ const PayrollPage: React.FC = () => {
             </div>
 
             {stats.length > 0 ? (
-                 <div className="flex-grow overflow-y-auto space-y-4 scrolling-touch pb-4">
+                <div className="flex-grow overflow-y-auto space-y-4 scrolling-touch pb-4">
+                    <div className="floating-card p-5">
+                         <h2 className="text-xl font-bold text-white mb-4">{t('payroll_earnings_comparison_chart_title')}</h2>
+                        <ResponsiveContainer width="100%" height={250}>
+                            <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                <XAxis dataKey="name" stroke="rgba(255,255,255,0.7)" fontSize={12} />
+                                <YAxis stroke="rgba(255,255,255,0.7)" fontSize={12} />
+                                <Tooltip 
+                                    cursor={{fill: 'rgba(255,255,255,0.1)'}}
+                                    contentStyle={{ backgroundColor: 'rgba(20, 20, 40, 0.8)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px' }}
+                                />
+                                <Bar dataKey="earnings" fill="url(#colorUv)" />
+                                <defs>
+                                    <linearGradient id="colorUv" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="var(--gradient-start)" stopOpacity={0.8}/>
+                                    <stop offset="95%" stopColor="var(--gradient-end)" stopOpacity={0.8}/>
+                                    </linearGradient>
+                                </defs>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+
                     {stats.map(workerStat => (
                         <WorkerPayrollCard key={workerStat.id} data={workerStat} />
                     ))}
