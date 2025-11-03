@@ -37,6 +37,7 @@ interface AppContextType extends AppState {
   updateWorker: (worker: Worker) => void;
   deleteWorker: (id: string) => void;
   addWorkEntry: (entry: Omit<WorkEntry, 'id'>, suppressToast?: boolean) => void;
+  addMultipleWorkEntries: (entries: Omit<WorkEntry, 'id'>[]) => void;
   updateWorkEntry: (entry: WorkEntry) => void;
   deleteWorkEntry: (id: string) => void;
   saveAttendance: (projectId: string, date: string, presentWorkerIds: string[]) => void;
@@ -137,6 +138,16 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     }
   }, [setWorkEntries, t]);
 
+  const addMultipleWorkEntries = useCallback((entries: Omit<WorkEntry, 'id'>[]) => {
+    const newEntries = entries.map((entry, index) => ({
+        ...entry,
+        id: `${Date.now()}-${index}`,
+    })) as WorkEntry[];
+
+    setWorkEntries(prev => [...newEntries, ...prev]);
+    showToast(t('toast_tables_logged', newEntries.length));
+  }, [setWorkEntries, t]);
+
   const updateWorkEntry = useCallback((updatedEntry: WorkEntry) => {
     setWorkEntries(prev => prev.map(e => e.id === updatedEntry.id ? updatedEntry : e));
     showToast(t('toast_entry_updated'));
@@ -219,7 +230,7 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     loading, setLoading,
     addProject, deleteProject, updateProjectWorkers,
     addWorker, updateWorker, deleteWorker,
-    addWorkEntry, updateWorkEntry, deleteWorkEntry,
+    addWorkEntry, addMultipleWorkEntries, updateWorkEntry, deleteWorkEntry,
     saveAttendance,
     mergeImportedData
   };

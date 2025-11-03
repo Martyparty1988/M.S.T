@@ -11,7 +11,7 @@ interface QuickLogTablesModalProps {
 }
 
 const QuickLogTablesModal: React.FC<QuickLogTablesModalProps> = ({ isOpen, onClose, project }) => {
-    const { workers, attendanceRecords, addWorkEntry, workEntries, showToast } = useAppContext();
+    const { workers, addMultipleWorkEntries, workEntries, showToast } = useAppContext();
     const { t } = useI18n();
 
     const [selectedTables, setSelectedTables] = useState<Set<string>>(new Set());
@@ -32,19 +32,13 @@ const QuickLogTablesModal: React.FC<QuickLogTablesModalProps> = ({ isOpen, onClo
 
     useEffect(() => {
         if (isOpen) {
-            const todayStr = new Date().toISOString().slice(0, 10);
-            const todaysAttendance = attendanceRecords.find(r => r.projectId === project.id && r.date === todayStr);
-            if (todaysAttendance) {
-                setSelectedWorkerIds(new Set(todaysAttendance.presentWorkerIds));
-            } else {
-                setSelectedWorkerIds(new Set(project.workerIds));
-            }
+            setSelectedWorkerIds(new Set());
             setSelectedTables(new Set());
             setTableSizes(new Map());
             setStartTime('');
             setEndTime('');
         }
-    }, [isOpen, project, attendanceRecords]);
+    }, [isOpen, project]);
 
     const handleToggleTable = useCallback((table: string) => {
         if (completedTables.has(table)) return; // Don't allow selecting completed tables
@@ -84,7 +78,11 @@ const QuickLogTablesModal: React.FC<QuickLogTablesModalProps> = ({ isOpen, onClo
             if (newSet.has(workerId)) {
                 newSet.delete(workerId);
             } else {
-                newSet.add(workerId);
+                if (newSet.size < 2) {
+                    newSet.add(workerId);
+                } else {
+                    showToast(t('error_max_two_workers'));
+                }
             }
             return newSet;
         });
@@ -118,6 +116,8 @@ const QuickLogTablesModal: React.FC<QuickLogTablesModalProps> = ({ isOpen, onClo
         const workerIds = [...selectedWorkerIds];
         const tablesToLog = [...selectedTables];
         
+        const newEntries: Omit<CablesWorkEntry, 'id'>[] = [];
+
         tablesToLog.forEach(table => {
             const tableSize = tableSizes.get(table);
             if(!tableSize) return;
@@ -134,10 +134,13 @@ const QuickLogTablesModal: React.FC<QuickLogTablesModalProps> = ({ isOpen, onClo
                 table,
                 tableSize,
             };
-            addWorkEntry(entry, true);
+            newEntries.push(entry);
         });
 
-        showToast(`${tablesToLog.length} ${t('toast_tables_logged')}`);
+        if (newEntries.length > 0) {
+            addMultipleWorkEntries(newEntries);
+        }
+
         onClose();
     };
 

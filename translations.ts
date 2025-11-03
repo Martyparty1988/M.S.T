@@ -216,11 +216,12 @@ const en = {
   toast_pricing_scenario_deleted: "Pricing scenario deleted.",
   toast_cannot_delete_default_scenario: "Cannot delete default scenarios.",
   toast_active_scenario_deleted: "Active scenario deleted, switched to default.",
-  toast_tables_logged: "tables logged successfully!",
+  toast_tables_logged: "{0} tables logged successfully!",
   error_end_time_before_start: "End time must be after start time.",
   error_select_table: "Please select a table from the project.",
   error_no_tables_in_project: "This project has no defined list of tables.",
   error_form_incomplete: "Please fill in all required fields.",
+  error_max_two_workers: "You can select a maximum of two workers.",
 
   // Modals
   edit_modal_save_button: "Save Changes",
@@ -430,11 +431,12 @@ export const translations = {
     toast_pricing_scenario_deleted: "Cenový scénář smazán.",
     toast_cannot_delete_default_scenario: "Nelze smazat výchozí scénáře.",
     toast_active_scenario_deleted: "Aktivní scénář smazán, přepnuto na výchozí.",
-    toast_tables_logged: "stolů úspěšně zapsáno!",
+    toast_tables_logged: "{0} stolů úspěšně zapsáno!",
     error_end_time_before_start: "Čas ukončení musí být po čase začátku.",
     error_select_table: "Vyberte prosím stůl z projektu.",
     error_no_tables_in_project: "Tento projekt nemá definovaný seznam stolů.",
     error_form_incomplete: "Prosím, vyplňte všechna povinná pole.",
+    error_max_two_workers: "Můžete vybrat maximálně dva pracovníky.",
 
     // Modals
     edit_modal_save_button: "Uložit změny",
@@ -491,7 +493,8 @@ export const translations = {
     dashboard_total_earnings: "Bendras uždarbis",
     dashboard_total_tables: "Pagaminti stalai",
     dashboard_quick_log_button: "Greitas stalų registravimas",
-    toast_tables_logged: "stalai sėkmingai užregistruoti!",
+    toast_tables_logged: "{0} stalai sėkmingai užregistruoti!",
+    error_max_two_workers: "Galite pasirinkti ne daugiau kaip du darbuotojus.",
     quick_log_save_button: "Registruoti {0} stalus",
     quick_log_table_sizes_label: "Pasirinktų stalų dydžiai",
   }
