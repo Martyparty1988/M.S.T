@@ -5,11 +5,12 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  footer?: React.ReactNode;
   closeOnOverlayClick?: boolean;
   maxWidthClass?: string;
 }
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, closeOnOverlayClick = true, maxWidthClass = 'max-w-lg' }) => {
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, footer, closeOnOverlayClick = true, maxWidthClass = 'max-w-lg' }) => {
   useEffect(() => {
     if (!isOpen) return;
 
@@ -42,6 +43,14 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, closeOn
           <button onClick={onClose} className="text-white/70 hover:text-white text-3xl font-light active:scale-95 transition-transform">&times;</button>
         </div>
         <div className="flex-grow overflow-y-auto p-5">{children}</div>
+        {footer && (
+            <div
+                className="flex-shrink-0 px-5 pt-4"
+                style={{ paddingBottom: `calc(1.25rem + var(--safe-area-inset-bottom))` }}
+            >
+                {footer}
+            </div>
+        )}
       </div>
     </div>
   );

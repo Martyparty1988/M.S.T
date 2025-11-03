@@ -136,6 +136,12 @@ const QuickLogTablesModal: React.FC<QuickLogTablesModalProps> = ({ isOpen, onClo
     const formLabelStyle = "block mb-2 text-sm font-medium text-white/70";
     const primaryButtonStyle = "w-full bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition duration-200 ease-in-out transform hover:scale-105 active:scale-95 shadow-lg disabled:opacity-50 text-base";
     
+    const footerContent = selectedTables.size > 0 ? (
+        <button onClick={handleLogTables} disabled={selectedWorkerIds.size === 0 || !startTime || !endTime} className={primaryButtonStyle}>
+            {t('quick_log_save_button', selectedTables.size)}
+        </button>
+    ) : null;
+
     return (
         <Modal
           isOpen={isOpen}
@@ -143,6 +149,7 @@ const QuickLogTablesModal: React.FC<QuickLogTablesModalProps> = ({ isOpen, onClo
           title={t('dashboard_quick_log_button')}
           closeOnOverlayClick={false}
           maxWidthClass="max-w-4xl"
+          footer={footerContent}
         >
           <div className="space-y-4">
             <div className="h-96 w-full">
@@ -205,10 +212,6 @@ const QuickLogTablesModal: React.FC<QuickLogTablesModalProps> = ({ isOpen, onClo
                             <input type="datetime-local" value={endTime} onChange={e => setEndTime(e.target.value)} required className={formInputStyle} />
                         </div>
                     </div>
-                    
-                    <button onClick={handleLogTables} disabled={selectedWorkerIds.size === 0 || !startTime || !endTime} className={primaryButtonStyle}>
-                        {t('quick_log_save_button', selectedTables.size)}
-                    </button>
                 </div>
             )}
             </div>
