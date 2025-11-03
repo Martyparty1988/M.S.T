@@ -1,42 +1,56 @@
+export type Page = 'plan' | 'records' | 'stats' | 'settings';
+export type Theme = 'default' | 'oceanic' | 'sunset' | 'forest';
+
+export interface Worker {
+  id: string;
+  name: string;
+  rate: number;
+}
+
+export type ProjectStatus = 'active' | 'completed' | 'paused';
 
 export interface Project {
   id: string;
   name: string;
+  status: ProjectStatus;
+  tables: string[];
 }
 
-export interface Worker {
+interface BaseWorkEntry {
   id: string;
-  name:string;
-  rate: number;
-}
-
-export enum WorkEntryType {
-  Task = 'task',
-  Hourly = 'hourly',
-}
-
-export interface BaseWorkEntry {
-  id: string;
-  projectId: string | null;
-  workerId: string;
-  date: string; // ISO string
-}
-
-export interface TaskWorkEntry extends BaseWorkEntry {
-  type: WorkEntryType.Task;
-  description: string; // Table/String number
-  reward: number;
-  x: number;
-  y: number;
+  projectId: string;
+  workerIds: string[];
+  startTime: string; // ISO
+  endTime: string; // ISO
+  duration: number; // hours
+  date: string; // ISO - should be the date of the start time for grouping
 }
 
 export interface HourlyWorkEntry extends BaseWorkEntry {
-  type: WorkEntryType.Hourly;
-  startTime: string; // ISO string
-  endTime: string; // ISO string
-  duration: number; // in hours
+  type: 'hourly';
+  description?: string;
 }
 
-export type WorkEntry = TaskWorkEntry | HourlyWorkEntry;
+export interface PanelingWorkEntry extends BaseWorkEntry {
+  type: 'task';
+  subType: 'paneling';
+  moduleCount: number;
+  modulesPerHour: number;
+}
 
-export type Page = 'plan' | 'records' | 'stats' | 'settings';
+export interface ConstructionWorkEntry extends BaseWorkEntry {
+  type: 'task';
+  subType: 'construction';
+  description: string;
+}
+
+export type TableSize = 'small' | 'medium' | 'large';
+
+export interface CablesWorkEntry extends BaseWorkEntry {
+  type: 'task';
+  subType: 'cables';
+  table: string;
+  tableSize: TableSize;
+}
+
+export type WorkEntry = HourlyWorkEntry | PanelingWorkEntry | ConstructionWorkEntry | CablesWorkEntry;

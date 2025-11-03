@@ -1,6 +1,7 @@
 import React from 'react';
 import { AppProvider, useAppContext } from './context/AppContext';
 import { I18nProvider, useI18n } from './context/I18nContext';
+import { ThemeProvider } from './context/ThemeContext';
 import PlanPage from './pages/PlanPage';
 import RecordsPage from './pages/RecordsPage';
 import StatsPage from './pages/StatsPage';
@@ -29,12 +30,12 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="h-full w-full flex flex-col antialiased bg-brand-navy font-sans">
+    <div className="h-full w-full flex flex-col antialiased font-sans text-gray-100">
       <header 
-        className="p-4 text-center shadow-lg glassmorphism z-10"
+        className="p-4 text-center shadow-lg glassmorphism z-10 border-b border-white/10"
         style={{ paddingTop: `calc(1rem + var(--safe-area-inset-top))` }}
       >
-        <h1 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500">
+        <h1 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)]">
           {t('app_title')}
         </h1>
       </header>
@@ -53,9 +54,11 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <I18nProvider>
-      <AppProvider>
-        <AppContent />
-      </AppProvider>
+      <ThemeProvider>
+        <AppProvider>
+          <AppContent />
+        </AppProvider>
+      </ThemeProvider>
     </I18nProvider>
   );
 };

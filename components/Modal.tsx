@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface ModalProps {
@@ -14,12 +13,12 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-40 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="glassmorphism rounded-xl shadow-2xl p-6 w-11/12 max-w-lg text-brand-ghost"
+        className="glassmorphism rounded-xl shadow-2xl p-6 w-11/12 max-w-lg text-white border border-white/20"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-white">{title}</h2>
-          <button onClick={onClose} className="text-brand-silver hover:text-white text-3xl font-light">&times;</button>
+          <button onClick={onClose} className="text-white/70 hover:text-white text-3xl font-light">&times;</button>
         </div>
         <div>{children}</div>
       </div>

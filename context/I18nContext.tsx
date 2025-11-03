@@ -5,7 +5,7 @@ import { translations, Locale, TranslationKey } from '../translations';
 interface I18nContextType {
   locale: Locale;
   setLocale: React.Dispatch<React.SetStateAction<Locale>>;
-  t: (key: TranslationKey) => string;
+  t: (key: TranslationKey, ...args: any[]) => string;
 }
 
 const I18nContext = createContext<I18nContextType | undefined>(undefined);
@@ -13,8 +13,14 @@ const I18nContext = createContext<I18nContextType | undefined>(undefined);
 export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [locale, setLocale] = useLocalStorage<Locale>('locale', 'cs');
 
-  const t = useCallback((key: TranslationKey): string => {
-    return translations[locale][key] || key;
+  const t = useCallback((key: TranslationKey, ...args: any[]): string => {
+    let translation = translations[locale][key] || key;
+    if (args.length > 0) {
+      translation = translation.replace(/{(\d)}/g, (match, number) => {
+        return typeof args[number] !== 'undefined' ? args[number] : match;
+      });
+    }
+    return translation;
   }, [locale]);
 
   const value = { locale, setLocale, t };

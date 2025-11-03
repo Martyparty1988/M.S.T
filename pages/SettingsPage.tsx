@@ -1,44 +1,44 @@
-
 import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
-import { WorkEntryType } from '../types';
-// FIX: The 'Locale' type is imported from '../translations' instead of '../types' because it is defined and exported from 'translations.ts'.
+import { useTheme } from '../context/ThemeContext';
+import { Theme, ProjectStatus, Project } from '../types';
 import type { Locale } from '../translations';
+import { ZARASAI_STOLY } from '../translations';
 
 const SettingsPage: React.FC = () => {
   const { 
     projects, addProject, deleteProject, 
     workers, addWorker, deleteWorker, 
-    workEntries, showToast,
-    smallTableRate, setSmallTableRate,
-    mediumTableRate, setMediumTableRate,
-    largeTableRate, setLargeTableRate
+    workEntries, showToast
   } = useAppContext();
   const { t, locale, setLocale } = useI18n();
-  
-  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+  const { theme, setTheme } = useTheme();
 
-  const formInputStyle = "w-full bg-brand-gunmetal/80 text-brand-ghost p-3 rounded-lg border border-brand-shale focus:outline-none focus:ring-2 focus:ring-brand-electric focus:border-brand-electric transition";
-  const formLabelStyle = "block mb-2 text-sm font-medium text-brand-silver";
-  const primaryButtonStyle = "w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200 transform hover:scale-105 shadow-lg";
+  const formInputStyle = "w-full bg-white/10 text-white p-3 rounded-lg border border-white/20 placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] focus:border-[var(--accent-color)] transition";
+  const formLabelStyle = "block mb-2 text-sm font-medium text-white/70";
+  const primaryButtonStyle = "w-full bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg transition duration-200 transform hover:scale-105 shadow-lg";
+  
+  const themes: { id: Theme, name: string, colors: [string, string] }[] = [
+      { id: 'default', name: t('settings_theme_default'), colors: ['#FF61A6', '#a855f7'] },
+      { id: 'oceanic', name: t('settings_theme_oceanic'), colors: ['#00C9FF', '#0ea5e9'] },
+      { id: 'sunset', name: t('settings_theme_sunset'), colors: ['#f97316', '#f59e0b'] },
+      { id: 'forest', name: t('settings_theme_forest'), colors: ['#4ade80', '#16a34a'] }
+  ];
 
   const handleAddProject = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const name = formData.get('projectName') as string;
-    const file = (formData.get('planPDF') as File);
+    const status = formData.get('projectStatus') as ProjectStatus;
+    const tablesRaw = formData.get('projectTables') as string;
+    
+    const tables = tablesRaw.split(/[\n,]/).map(s => s.trim()).filter(Boolean);
 
-    if (name && file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          addProject(name, event.target.result as string);
-          (e.target as HTMLFormElement).reset();
-          setSelectedFileName(null);
-        }
-      };
-      reader.readAsDataURL(file);
+    if (name && status) {
+        const newProject: Omit<Project, 'id'> = { name, status, tables };
+        addProject(newProject);
+        (e.target as HTMLFormElement).reset();
     }
   };
 
@@ -64,34 +64,11 @@ const SettingsPage: React.FC = () => {
     }
     
     let report = `${t('report_title')} ${today.toLocaleDateString()}:\n\n`;
-    const workerTotals: { [key: string]: { tasks: number, taskValue: number, hours: number, hourValue: number } } = {};
-
+    // Simplified report for now
     todaysEntries.forEach(entry => {
-        const worker = workers.find(w => w.id === entry.workerId);
-        if (!worker) return;
-        if (!workerTotals[worker.name]) {
-            workerTotals[worker.name] = { tasks: 0, taskValue: 0, hours: 0, hourValue: 0 };
-        }
-
-        if (entry.type === WorkEntryType.Task) {
-            workerTotals[worker.name].tasks++;
-            workerTotals[worker.name].taskValue += entry.reward;
-        } else {
-            workerTotals[worker.name].hours += entry.duration;
-            workerTotals[worker.name].hourValue += entry.duration * worker.rate;
-        }
-    });
-
-    Object.entries(workerTotals).forEach(([name, totals]) => {
-        report += `${name}:\n`;
-        if (totals.tasks > 0) {
-            report += `  - ${t('report_tasks')}: ${totals.tasks} ${t('report_tables')} €${totals.taskValue.toFixed(2)}\n`;
-        }
-        if (totals.hours > 0) {
-            report += `  - ${t('report_hourly')}: ${totals.hours.toFixed(2)} ${t('report_hours')} €${totals.hourValue.toFixed(2)}\n`;
-        }
-        const totalPay = totals.taskValue + totals.hourValue;
-        report += `  - ${t('report_total_today')}: €${totalPay.toFixed(2)}\n\n`;
+        const workerNames = entry.workerIds.map(id => workers.find(w=>w.id === id)?.name).join(', ');
+        const projectName = projects.find(p => p.id === entry.projectId)?.name;
+        report += `Project: ${projectName}, Workers: ${workerNames}, Duration: ${entry.duration.toFixed(2)}h\n`;
     });
     
     navigator.clipboard.writeText(report).then(() => {
@@ -101,9 +78,83 @@ const SettingsPage: React.FC = () => {
     });
   };
 
+  const handleExportData = () => {
+    const dataToExport: { [key: string]: any } = {};
+    const keysToExport = [ 'projects', 'workers', 'workEntries', 'activeProjectId', 'locale', 'theme' ];
+    
+    keysToExport.forEach(key => {
+        const item = localStorage.getItem(key);
+        if (item) {
+            dataToExport[key] = JSON.parse(item);
+        }
+    });
+
+    const dataStr = JSON.stringify(dataToExport, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const date = new Date().toISOString().slice(0, 10);
+    link.download = `solar_work_count_backup_${date}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast(t('toast_data_exported'));
+  };
+
+  const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!window.confirm(t('import_confirm_message'))) {
+        e.target.value = '';
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        try {
+            const data = JSON.parse(event.target?.result as string);
+            // Ensure Zarasai project is preserved or correctly merged
+            if (data.projects && !data.projects.find((p: Project) => p.id === 'zarasai_predefined')) {
+                data.projects.push({ id: 'zarasai_predefined', name: 'Zarasai', status: 'active', tables: ZARASAI_STOLY });
+            }
+
+            Object.keys(data).forEach(key => {
+                localStorage.setItem(key, JSON.stringify(data[key]));
+            });
+            showToast(t('toast_data_imported'));
+            setTimeout(() => window.location.reload(), 1000);
+        } catch (error) {
+            console.error("Import failed:", error);
+            showToast(t('toast_import_error'));
+        } finally {
+            e.target.value = '';
+        }
+    };
+    reader.readAsText(file);
+  };
+
   return (
     <div className="h-full w-full p-4 overflow-y-auto space-y-6">
-      <div className="glassmorphism p-4 rounded-xl">
+      <div className="glassmorphism p-4 rounded-xl border border-white/20 shadow-lg">
+        <h2 className="text-xl font-bold mb-3 text-white">{t('settings_theme_title')}</h2>
+        <div className="grid grid-cols-2 gap-4">
+            {themes.map(item => (
+                <button
+                    key={item.id}
+                    onClick={() => setTheme(item.id)}
+                    className={`p-2 rounded-lg border-2 transition-all ${theme === item.id ? 'border-[var(--accent-color)] shadow-lg' : 'border-transparent hover:border-white/20'}`}
+                >
+                    <div className="w-full h-10 rounded-md" style={{ background: `linear-gradient(to right, ${item.colors[0]}, ${item.colors[1]})` }}></div>
+                    <p className="mt-2 text-center text-sm font-medium">{item.name}</p>
+                </button>
+            ))}
+        </div>
+      </div>
+
+      <div className="glassmorphism p-4 rounded-xl border border-white/20 shadow-lg">
         <h2 className="text-xl font-bold mb-3 text-white">{t('settings_language_title')}</h2>
         <select
           value={locale}
@@ -114,53 +165,41 @@ const SettingsPage: React.FC = () => {
           <option value="en">English</option>
         </select>
       </div>
-
-      <div className="glassmorphism p-4 rounded-xl">
-        <h2 className="text-xl font-bold mb-3 text-white">{t('settings_task_rates_title')}</h2>
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="smallTableRate" className={formLabelStyle}>{t('settings_small_table_rate')}</label>
-            <input type="number" step="0.01" id="smallTableRate" value={smallTableRate} onChange={e => setSmallTableRate(parseFloat(e.target.value) || 0)} className={formInputStyle} />
-          </div>
-          <div>
-            <label htmlFor="mediumTableRate" className={formLabelStyle}>{t('settings_medium_table_rate')}</label>
-            <input type="number" step="0.01" id="mediumTableRate" value={mediumTableRate} onChange={e => setMediumTableRate(parseFloat(e.target.value) || 0)} className={formInputStyle} />
-          </div>
-          <div>
-            <label htmlFor="largeTableRate" className={formLabelStyle}>{t('settings_large_table_rate')}</label>
-            <input type="number" step="0.01" id="largeTableRate" value={largeTableRate} onChange={e => setLargeTableRate(parseFloat(e.target.value) || 0)} className={formInputStyle} />
-          </div>
-        </div>
-      </div>
-
-      <div className="glassmorphism p-4 rounded-xl">
+      
+      <div className="glassmorphism p-4 rounded-xl border border-white/20 shadow-lg">
         <h2 className="text-xl font-bold mb-3 text-white">{t('settings_project_management_title')}</h2>
         <form onSubmit={handleAddProject} className="space-y-4 mb-4">
           <input type="text" name="projectName" placeholder={t('settings_project_name_placeholder')} required className={formInputStyle} />
           <div>
-            <input 
-              type="file" 
-              name="planPDF" 
-              accept="application/pdf" 
-              required 
-              className="w-full text-sm text-brand-silver file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-brand-shale file:text-brand-ghost hover:file:bg-brand-silver"
-              onChange={(e) => setSelectedFileName(e.target.files && e.target.files.length > 0 ? e.target.files[0].name : null)}
-            />
-            {selectedFileName && <p className="text-sm text-brand-silver mt-2 italic">{t('settings_selected_file')}: {selectedFileName}</p>}
+            <label className={formLabelStyle}>{t('settings_project_status_label')}</label>
+            <select name="projectStatus" defaultValue="active" required className={formInputStyle}>
+                <option value="active">{t('settings_project_status_active')}</option>
+                <option value="completed">{t('settings_project_status_completed')}</option>
+                <option value="paused">{t('settings_project_status_paused')}</option>
+            </select>
+          </div>
+           <div>
+            <label className={formLabelStyle}>{t('settings_project_tables_label')}</label>
+            <textarea name="projectTables" rows={4} className={formInputStyle}></textarea>
           </div>
           <button type="submit" className={primaryButtonStyle}>{t('settings_add_project_button')}</button>
         </form>
         <div className="space-y-2">
             {projects.map(p => (
-                <div key={p.id} className="bg-brand-gunmetal/50 p-3 rounded-lg flex justify-between items-center">
-                    <span className="font-medium">{p.name}</span>
-                    <button onClick={() => deleteProject(p.id)} className="text-brand-shale hover:text-red-500 font-bold text-xl px-2">&times;</button>
+                <div key={p.id} className="bg-white/5 p-3 rounded-lg flex justify-between items-center">
+                    <div>
+                        <span className="font-medium">{p.name}</span>
+                        <span className="ml-2 text-xs bg-white/10 text-white/70 px-2 py-1 rounded-full capitalize">{p.status}</span>
+                    </div>
+                    {p.id !== 'zarasai_predefined' && (
+                        <button onClick={() => deleteProject(p.id)} className="text-white/50 hover:text-red-500 font-bold text-xl px-2">&times;</button>
+                    )}
                 </div>
             ))}
         </div>
       </div>
 
-      <div className="glassmorphism p-4 rounded-xl">
+      <div className="glassmorphism p-4 rounded-xl border border-white/20 shadow-lg">
         <h2 className="text-xl font-bold mb-3 text-white">{t('settings_worker_management_title')}</h2>
         <form onSubmit={handleAddWorker} className="space-y-4 mb-4">
           <input type="text" name="workerName" placeholder={t('settings_worker_name_placeholder')} required className={formInputStyle} />
@@ -169,17 +208,32 @@ const SettingsPage: React.FC = () => {
         </form>
         <div className="space-y-2">
             {workers.map(w => (
-                <div key={w.id} className="bg-brand-gunmetal/50 p-3 rounded-lg flex justify-between items-center">
+                <div key={w.id} className="bg-white/5 p-3 rounded-lg flex justify-between items-center">
                     <span className="font-medium">{w.name} (€{w.rate}/hr)</span>
-                    <button onClick={() => deleteWorker(w.id)} className="text-brand-shale hover:text-red-500 font-bold text-xl px-2">&times;</button>
+                    <button onClick={() => deleteWorker(w.id)} className="text-white/50 hover:text-red-500 font-bold text-xl px-2">&times;</button>
                 </div>
             ))}
         </div>
       </div>
+      
+      <div className="glassmorphism p-4 rounded-xl border border-white/20 shadow-lg">
+        <h2 className="text-xl font-bold mb-3 text-white">{t('settings_data_management_title')}</h2>
+        <div className="space-y-4">
+            <button onClick={handleExportData} className="w-full bg-gradient-to-r from-sky-500 to-indigo-500 hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg transition transform hover:scale-105 shadow-lg">
+                {t('settings_export_data_button')}
+            </button>
+            <div>
+              <input type="file" id="importFile" accept="application/json" className="hidden" onChange={handleImportData} />
+              <label htmlFor="importFile" className="w-full block text-center bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg transition transform hover:scale-105 shadow-lg cursor-pointer">
+                  {t('settings_import_data_button')}
+              </label>
+            </div>
+        </div>
+      </div>
 
-      <div className="glassmorphism p-4 rounded-xl">
+      <div className="glassmorphism p-4 rounded-xl border border-white/20 shadow-lg">
         <h2 className="text-xl font-bold mb-3 text-white">{t('settings_actions_title')}</h2>
-        <button onClick={generateDailyReport} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition transform hover:scale-105 shadow-lg">{t('settings_generate_report_button')}</button>
+        <button onClick={generateDailyReport} className="w-full bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white font-bold py-3 px-4 rounded-lg transition transform hover:scale-105 shadow-lg">{t('settings_generate_report_button')}</button>
       </div>
     </div>
   );

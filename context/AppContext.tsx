@@ -1,9 +1,15 @@
-
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { Project, Worker, WorkEntry, Page, WorkEntryType } from '../types';
+import { Project, Worker, WorkEntry, Page } from '../types';
 import { useI18n } from './I18nContext';
-import { savePdf, deletePdf } from '../utils/db';
+import { ZARASAI_STOLY } from '../translations';
+
+const ZARASAI_PROJECT: Project = {
+  id: 'zarasai_predefined',
+  name: 'Zarasai',
+  status: 'active',
+  tables: ZARASAI_STOLY,
+};
 
 interface AppState {
   projects: Project[];
@@ -13,9 +19,6 @@ interface AppState {
   page: Page;
   toast: string | null;
   loading: boolean;
-  smallTableRate: number;
-  mediumTableRate: number;
-  largeTableRate: number;
 }
 
 interface AppContextType extends AppState {
@@ -25,25 +28,22 @@ interface AppContextType extends AppState {
   setActiveProjectId: React.Dispatch<React.SetStateAction<string | null>>;
   setPage: React.Dispatch<React.SetStateAction<Page>>;
   
-  addProject: (name: string, pdfDataUrl: string) => void;
+  addProject: (project: Omit<Project, 'id'>) => void;
   deleteProject: (id: string) => void;
   addWorker: (worker: Omit<Worker, 'id'>) => void;
   deleteWorker: (id: string) => void;
-  addWorkEntry: (entry: Omit<WorkEntry, 'id' | 'date'>) => void;
+  addWorkEntry: (entry: Omit<WorkEntry, 'id'>) => void;
   updateWorkEntry: (entry: WorkEntry) => void;
   deleteWorkEntry: (id: string) => void;
 
   showToast: (message: string) => void;
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
-  setSmallTableRate: React.Dispatch<React.SetStateAction<number>>;
-  setMediumTableRate: React.Dispatch<React.SetStateAction<number>>;
-  setLargeTableRate: React.Dispatch<React.SetStateAction<number>>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
-  const [projects, setProjects] = useLocalStorage<Project[]>('projects', []);
+  const [projects, setProjects] = useLocalStorage<Project[]>('projects', [ZARASAI_PROJECT]);
   const [workers, setWorkers] = useLocalStorage<Worker[]>('workers', []);
   const [workEntries, setWorkEntries] = useLocalStorage<WorkEntry[]>('workEntries', []);
   const [activeProjectId, setActiveProjectId] = useLocalStorage<string | null>('activeProjectId', null);
@@ -52,40 +52,28 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
   const [loading, setLoading] = useState(false);
   const { t } = useI18n();
 
-  const [smallTableRate, setSmallTableRate] = useLocalStorage<number>('smallTableRate', 10);
-  const [mediumTableRate, setMediumTableRate] = useLocalStorage<number>('mediumTableRate', 15);
-  const [largeTableRate, setLargeTableRate] = useLocalStorage<number>('largeTableRate', 20);
-
   const showToast = (message: string) => {
     setToast(message);
     setTimeout(() => setToast(null), 3000);
   };
 
-  const addProject = useCallback(async (name: string, pdfDataUrl: string) => {
-    const newProject = { name, id: Date.now().toString() };
-    try {
-      await savePdf(newProject.id, pdfDataUrl);
-      setProjects(prev => [...prev, newProject]);
-      showToast(t('toast_project_added'));
-    } catch (error) {
-      console.error("Failed to save project:", error);
-      showToast(t('toast_pdf_save_error'));
-    }
+  const addProject = useCallback((project: Omit<Project, 'id'>) => {
+    const newProject = { ...project, id: Date.now().toString() };
+    setProjects(prev => [...prev, newProject]);
+    showToast(t('toast_project_added'));
   }, [setProjects, t]);
 
-  const deleteProject = useCallback(async (id: string) => {
-    try {
-      await deletePdf(id);
-      setProjects(prev => prev.filter(p => p.id !== id));
-      setWorkEntries(prev => prev.filter(w => w.projectId !== id));
-      if (activeProjectId === id) {
-        setActiveProjectId(null);
-      }
-      showToast(t('toast_project_deleted'));
-    } catch (error) {
-      console.error("Failed to delete project PDF:", error);
-      showToast(t('toast_pdf_delete_error'));
+  const deleteProject = useCallback((id: string) => {
+    if (id === ZARASAI_PROJECT.id) {
+      // Potentially show a toast that the default project cannot be deleted
+      return;
     }
+    setProjects(prev => prev.filter(p => p.id !== id));
+    setWorkEntries(prev => prev.filter(w => w.projectId !== id));
+    if (activeProjectId === id) {
+      setActiveProjectId(null);
+    }
+    showToast(t('toast_project_deleted'));
   }, [setProjects, setWorkEntries, activeProjectId, setActiveProjectId, t]);
 
   const addWorker = useCallback((worker: Omit<Worker, 'id'>) => {
@@ -95,18 +83,21 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
 
   const deleteWorker = useCallback((id: string) => {
     setWorkers(prev => prev.filter(w => w.id !== id));
-    setWorkEntries(prev => prev.filter(w => w.workerId !== id));
+    // Also remove the worker from any work entries
+    setWorkEntries(prev => prev.map(entry => ({
+      ...entry,
+      workerIds: entry.workerIds.filter(workerId => workerId !== id)
+    })).filter(entry => entry.workerIds.length > 0)); // Remove entries if no workers are left
     showToast(t('toast_worker_deleted'));
   }, [setWorkers, setWorkEntries, t]);
   
-  const addWorkEntry = useCallback((entry: Omit<WorkEntry, 'id' | 'date'>) => {
+  const addWorkEntry = useCallback((entry: Omit<WorkEntry, 'id'>) => {
     const newEntry = {
       ...entry,
       id: Date.now().toString(),
-      date: new Date().toISOString(),
     } as WorkEntry;
     setWorkEntries(prev => [newEntry, ...prev]);
-    showToast(entry.type === WorkEntryType.Task ? t('toast_task_added') : t('toast_shift_recorded'));
+    showToast(t('toast_entry_added'));
   }, [setWorkEntries, t]);
 
   const updateWorkEntry = useCallback((updatedEntry: WorkEntry) => {
@@ -127,12 +118,9 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     page, setPage,
     toast, showToast,
     loading, setLoading,
-    smallTableRate, setSmallTableRate,
-    mediumTableRate, setMediumTableRate,
-    largeTableRate, setLargeTableRate,
     addProject, deleteProject,
     addWorker, deleteWorker,
-    addWorkEntry, updateWorkEntry, deleteWorkEntry
+    addWorkEntry, updateWorkEntry, deleteWorkEntry,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

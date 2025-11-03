@@ -7,7 +7,7 @@
   
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#0D1B2A">
+  <meta name="theme-color" content="#0c0c1e">
 
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☀️</text></svg>">
   
@@ -20,14 +20,6 @@
     tailwind.config = {
       theme: {
         extend: {
-          colors: {
-            'brand-navy': '#0D1B2A',
-            'brand-gunmetal': '#1B263B',
-            'brand-shale': '#415A77',
-            'brand-silver': '#778DA9',
-            'brand-ghost': '#E0E1DD',
-            'brand-electric': '#00BFFF',
-          },
           fontFamily: {
             sans: ['Inter', 'sans-serif'],
           },
@@ -36,43 +28,94 @@
     }
   </script>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-  <script>
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`;
-  </script>
-
   <style>
     :root {
       --safe-area-inset-top: env(safe-area-inset-top);
       --safe-area-inset-bottom: env(safe-area-inset-bottom);
     }
+    .theme-default {
+      --bg-radial-1: hsla(320, 87%, 50%, 0.4);
+      --bg-radial-2: hsla(260, 100%, 60%, 0.4);
+      --bg-radial-3: hsla(200, 98%, 49%, 0.3);
+      --bg-radial-4: hsla(340, 100%, 60%, 0.3);
+      --accent-color: #f472b6; /* fuchsia-400 */
+      --accent-color-light: #f9a8d4; /* fuchsia-300 */
+      --accent-glow-color: #f472b6;
+      --gradient-start: #FF61A6;
+      --gradient-middle: #d946ef; /* fuchsia-500 */
+      --gradient-end: #a855f7; /* violet-500 */
+      --pin-color: rgba(236, 72, 153, 0.8); /* pink-500 */
+    }
+    .theme-oceanic {
+      --bg-radial-1: hsla(180, 87%, 40%, 0.4);
+      --bg-radial-2: hsla(195, 100%, 50%, 0.4);
+      --bg-radial-3: hsla(210, 98%, 55%, 0.3);
+      --bg-radial-4: hsla(170, 100%, 50%, 0.3);
+      --accent-color: #22d3ee; /* cyan-400 */
+      --accent-color-light: #67e8f9; /* cyan-300 */
+      --accent-glow-color: #22d3ee;
+      --gradient-start: #00C9FF;
+      --gradient-middle: #14b8a6; /* teal-500 */
+      --gradient-end: #0ea5e9; /* sky-500 */
+      --pin-color: rgba(20, 184, 166, 0.8); /* teal-500 */
+    }
+    .theme-sunset {
+      --bg-radial-1: hsla(30, 100%, 50%, 0.4);
+      --bg-radial-2: hsla(50, 100%, 55%, 0.4);
+      --bg-radial-3: hsla(10, 90%, 60%, 0.3);
+      --bg-radial-4: hsla(340, 90%, 65%, 0.3);
+      --accent-color: #fb923c; /* orange-400 */
+      --accent-color-light: #fdba74; /* orange-300 */
+      --accent-glow-color: #fb923c;
+      --gradient-start: #f97316; /* orange-500 */
+      --gradient-middle: #ef4444; /* red-500 */
+      --gradient-end: #f59e0b; /* amber-500 */
+      --pin-color: rgba(249, 115, 22, 0.8); /* orange-500 */
+    }
+    .theme-forest {
+      --bg-radial-1: hsla(130, 80%, 35%, 0.4);
+      --bg-radial-2: hsla(150, 90%, 45%, 0.4);
+      --bg-radial-3: hsla(100, 85%, 55%, 0.3);
+      --bg-radial-4: hsla(140, 70%, 40%, 0.3);
+      --accent-color: #84cc16; /* lime-500 */
+      --accent-color-light: #a3e635; /* lime-400 */
+      --accent-glow-color: #84cc16;
+      --gradient-start: #4ade80; /* green-400 */
+      --gradient-middle: #22c55e; /* green-500 */
+      --gradient-end: #16a34a; /* green-600 */
+      --pin-color: rgba(132, 204, 22, 0.8); /* lime-500 */
+    }
     body {
-      background: linear-gradient(160deg, #0D1B2A 0%, #1B263B 100%);
-      color: #E0E1DD;
+      background-color: #0c0c1e;
+      background-image:
+        radial-gradient(at 10% 20%, var(--bg-radial-1) 0px, transparent 50%),
+        radial-gradient(at 90% 10%, var(--bg-radial-2) 0px, transparent 50%),
+        radial-gradient(at 70% 80%, var(--bg-radial-3) 0px, transparent 50%),
+        radial-gradient(at 30% 90%, var(--bg-radial-4) 0px, transparent 50%);
+      color: #f0f0f0;
       font-family: 'Inter', sans-serif;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
       overscroll-behavior-y: none;
     }
     .glassmorphism {
-      background: rgba(65, 90, 119, 0.2);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(119, 141, 169, 0.2);
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(15px);
+      -webkit-backdrop-filter: blur(15px);
     }
     /* Custom Scrollbar */
     ::-webkit-scrollbar {
       width: 8px;
     }
     ::-webkit-scrollbar-track {
-      background: #1B263B;
+      background: transparent;
     }
     ::-webkit-scrollbar-thumb {
-      background: #415A77;
+      background: rgba(255, 255, 255, 0.2);
       border-radius: 4px;
     }
     ::-webkit-scrollbar-thumb:hover {
-      background: #778DA9;
+      background: rgba(255, 255, 255, 0.4);
     }
   </style>
 
