@@ -33,7 +33,7 @@ interface AppContextType extends AppState {
   deleteProject: (id: string) => void;
   updateProjectWorkers: (projectId: string, workerIds: string[]) => void;
 
-  addWorker: (worker: Omit<Worker, 'id'>) => void;
+  addWorker: (worker: Omit<Worker, 'id'>) => Worker;
   deleteWorker: (id: string) => void;
   addWorkEntry: (entry: Omit<WorkEntry, 'id'>) => void;
   updateWorkEntry: (entry: WorkEntry) => void;
@@ -84,9 +84,11 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     showToast(t('toast_team_updated'));
   }, [setProjects, t]);
 
-  const addWorker = useCallback((worker: Omit<Worker, 'id'>) => {
-    setWorkers(prev => [...prev, { ...worker, id: Date.now().toString() }]);
+  const addWorker = useCallback((worker: Omit<Worker, 'id'>): Worker => {
+    const newWorker = { ...worker, id: Date.now().toString() };
+    setWorkers(prev => [...prev, newWorker]);
     showToast(t('toast_worker_added'));
+    return newWorker;
   }, [setWorkers, t]);
 
   const deleteWorker = useCallback((id: string) => {

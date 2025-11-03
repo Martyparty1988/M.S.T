@@ -124,7 +124,7 @@ const en = {
   settings_add_project_button: "Add Project",
   settings_worker_management_title: "Worker Management",
   settings_worker_name_placeholder: "New Worker Name",
-  settings_worker_rate_placeholder: "Hourly Rate (€)",
+  settings_worker_rate_placeholder: "Hourly Rate (€) (optional)",
   settings_add_worker_button: "Add Worker",
   settings_actions_title: "Actions",
   settings_generate_report_button: "Generate & Copy Daily Report",
@@ -179,7 +179,8 @@ const en = {
   report_tables: "tables for",
   report_hourly: "Hourly",
   report_hours: "hours for",
-  report_total_today: "Total Today"
+  report_total_today: "Total Today",
+  cancel_button: "Cancel"
 };
 
 export const translations = {
@@ -282,7 +283,7 @@ export const translations = {
     settings_add_project_button: "Přidat projekt",
     settings_worker_management_title: "Správa pracovníků",
     settings_worker_name_placeholder: "Jméno nového pracovníka",
-    settings_worker_rate_placeholder: "Hodinová sazba (€)",
+    settings_worker_rate_placeholder: "Hodinová sazba (€) (volitelné)",
     settings_add_worker_button: "Přidat pracovníka",
     settings_actions_title: "Akce",
     settings_generate_report_button: "Generovat a kopírovat denní report",
@@ -337,7 +338,8 @@ export const translations = {
     report_tables: "stolů za",
     report_hourly: "Hodinová práce",
     report_hours: "hodin za",
-    report_total_today: "Celkem dnes"
+    report_total_today: "Celkem dnes",
+    cancel_button: "Zrušit",
   },
   en,
   lt: {
@@ -360,6 +362,7 @@ export const translations = {
     settings_project_status_active: "Aktyvus",
     settings_project_status_completed: "Užbaigtas",
     settings_project_status_paused: "Sustabdytas",
+    cancel_button: "Atšaukti",
   }
 };
 

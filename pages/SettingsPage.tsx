@@ -61,9 +61,10 @@ const SettingsPage: React.FC = () => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const name = formData.get('workerName') as string;
-    const rate = parseFloat(formData.get('workerRate') as string);
-    if (name && !isNaN(rate)) {
-      addWorker({ name, rate });
+    const rateString = formData.get('workerRate') as string;
+    const rate = parseFloat(rateString);
+    if (name) {
+      addWorker({ name, rate: isNaN(rate) ? 0 : rate });
       (e.target as HTMLFormElement).reset();
     }
   };
@@ -195,12 +196,12 @@ const SettingsPage: React.FC = () => {
                           <span className="font-semibold text-base">{p.name}</span>
                           <span className="ml-2 text-xs bg-white/10 text-white/70 px-2 py-1 rounded-full capitalize">{p.status}</span>
                       </div>
-                      {p.id !== 'zarasai_predefined' && (
-                          <div className="flex items-center">
-                              <button onClick={() => handleOpenTeamModal(p)} className="text-sm bg-white/10 hover:bg-white/20 text-white/80 font-semibold px-3 py-1 rounded-lg transition active:scale-95 mr-2">{t('settings_manage_team_button')}</button>
+                      <div className="flex items-center">
+                          <button onClick={() => handleOpenTeamModal(p)} className="text-sm bg-white/10 hover:bg-white/20 text-white/80 font-semibold px-3 py-1 rounded-lg transition active:scale-95 mr-2">{t('settings_manage_team_button')}</button>
+                          {p.id !== 'zarasai_predefined' && (
                               <button onClick={() => deleteProject(p.id)} className="text-white/40 hover:text-red-500 font-bold text-xl px-2 transition active:scale-90">&times;</button>
-                          </div>
-                      )}
+                          )}
+                      </div>
                   </div>
               ))}
           </div>
@@ -209,7 +210,7 @@ const SettingsPage: React.FC = () => {
         <SettingsCard title={t('settings_worker_management_title')}>
           <form onSubmit={handleAddWorker} className="space-y-4 mb-4">
             <input type="text" name="workerName" placeholder={t('settings_worker_name_placeholder')} required className={formInputStyle} />
-            <input type="number" step="0.01" name="workerRate" placeholder={t('settings_worker_rate_placeholder')} required className={formInputStyle} />
+            <input type="number" step="0.01" name="workerRate" placeholder={t('settings_worker_rate_placeholder')} className={formInputStyle} />
             <button type="submit" className={primaryButtonStyle}>{t('settings_add_worker_button')}</button>
           </form>
           <div className="space-y-2 max-h-48 overflow-y-auto">
