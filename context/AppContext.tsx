@@ -34,6 +34,7 @@ interface AppContextType extends AppState {
   updateProjectWorkers: (projectId: string, workerIds: string[]) => void;
 
   addWorker: (worker: Omit<Worker, 'id'>) => Worker;
+  updateWorker: (worker: Worker) => void;
   deleteWorker: (id: string) => void;
   addWorkEntry: (entry: Omit<WorkEntry, 'id'>) => void;
   updateWorkEntry: (entry: WorkEntry) => void;
@@ -85,10 +86,22 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
   }, [setProjects, t]);
 
   const addWorker = useCallback((worker: Omit<Worker, 'id'>): Worker => {
-    const newWorker = { ...worker, id: Date.now().toString() };
+    const newWorker: Worker = {
+        ...worker,
+        id: Date.now().toString(),
+        panelRate: worker.panelRate || 0,
+        cableRateSmall: worker.cableRateSmall || 0,
+        cableRateMedium: worker.cableRateMedium || 0,
+        cableRateLarge: worker.cableRateLarge || 0,
+    };
     setWorkers(prev => [...prev, newWorker]);
     showToast(t('toast_worker_added'));
     return newWorker;
+  }, [setWorkers, t]);
+
+  const updateWorker = useCallback((updatedWorker: Worker) => {
+    setWorkers(prev => prev.map(w => w.id === updatedWorker.id ? updatedWorker : w));
+    showToast(t('toast_worker_updated'));
   }, [setWorkers, t]);
 
   const deleteWorker = useCallback((id: string) => {
@@ -211,7 +224,7 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     toast, showToast,
     loading, setLoading,
     addProject, deleteProject, updateProjectWorkers,
-    addWorker, deleteWorker,
+    addWorker, updateWorker, deleteWorker,
     addWorkEntry, updateWorkEntry, deleteWorkEntry,
     saveAttendance,
     mergeImportedData

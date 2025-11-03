@@ -5,14 +5,14 @@ import { ThemeProvider } from './context/ThemeContext';
 import PlanPage from './pages/PlanPage';
 import AttendancePage from './pages/AttendancePage';
 import RecordsPage from './pages/RecordsPage';
-import StatsPage from './pages/StatsPage';
+import PayrollPage from './pages/PayrollPage';
 import SettingsPage from './pages/SettingsPage';
 import BottomNav from './components/BottomNav';
 import Loader from './components/Loader';
 import Toast from './components/Toast';
 import { Page } from './types';
 
-const pageOrder: Page[] = ['plan', 'attendance', 'records', 'stats', 'settings'];
+const pageOrder: Page[] = ['plan', 'attendance', 'records', 'payroll', 'settings'];
 
 const AppContent: React.FC = () => {
   const { page, loading, toast } = useAppContext();
@@ -43,8 +43,8 @@ const AppContent: React.FC = () => {
         return <AttendancePage />;
       case 'records':
         return <RecordsPage />;
-      case 'stats':
-        return <StatsPage />;
+      case 'payroll':
+        return <PayrollPage />;
       case 'settings':
         return <SettingsPage />;
       default:

@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
 import { useTheme } from '../context/ThemeContext';
-import { Theme, ProjectStatus, Project } from '../types';
+import { Theme, ProjectStatus, Project, Worker } from '../types';
 import type { Locale } from '../translations';
 import ManageTeamModal from '../components/ManageTeamModal';
+import EditWorkerModal from '../components/EditWorkerModal';
 
 const SettingsCard: React.FC<{title: string, children: React.ReactNode}> = ({title, children}) => (
     <div className="floating-card p-5">
@@ -25,6 +26,9 @@ const SettingsPage: React.FC = () => {
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [projectToManage, setProjectToManage] = useState<Project | null>(null);
 
+  const [isEditWorkerModalOpen, setIsEditWorkerModalOpen] = useState(false);
+  const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
+
   const formInputStyle = "w-full bg-white/10 text-white p-3 rounded-xl border border-white/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] focus:border-[var(--accent-color)] transition text-base font-normal";
   const formLabelStyle = "block mb-2 text-sm font-medium text-white/70";
   const primaryButtonStyle = "w-full bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition duration-200 ease-in-out transform hover:scale-105 active:scale-95 shadow-lg";
@@ -40,6 +44,11 @@ const SettingsPage: React.FC = () => {
     setProjectToManage(project);
     setIsTeamModalOpen(true);
   };
+
+  const handleOpenEditWorkerModal = (worker: Worker) => {
+    setEditingWorker(worker);
+    setIsEditWorkerModalOpen(true);
+  }
 
   const handleAddProject = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -61,10 +70,21 @@ const SettingsPage: React.FC = () => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const name = formData.get('workerName') as string;
-    const rateString = formData.get('workerRate') as string;
-    const rate = parseFloat(rateString);
+    const rate = parseFloat(formData.get('workerRate') as string);
+    const panelRate = parseFloat(formData.get('panelRate') as string);
+    const cableRateSmall = parseFloat(formData.get('cableRateSmall') as string);
+    const cableRateMedium = parseFloat(formData.get('cableRateMedium') as string);
+    const cableRateLarge = parseFloat(formData.get('cableRateLarge') as string);
+
     if (name) {
-      addWorker({ name, rate: isNaN(rate) ? 0 : rate });
+      addWorker({
+          name,
+          rate: isNaN(rate) ? 0 : rate,
+          panelRate: isNaN(panelRate) ? 0 : panelRate,
+          cableRateSmall: isNaN(cableRateSmall) ? 0 : cableRateSmall,
+          cableRateMedium: isNaN(cableRateMedium) ? 0 : cableRateMedium,
+          cableRateLarge: isNaN(cableRateLarge) ? 0 : cableRateLarge,
+      });
       (e.target as HTMLFormElement).reset();
     }
   };
@@ -211,13 +231,30 @@ const SettingsPage: React.FC = () => {
           <form onSubmit={handleAddWorker} className="space-y-4 mb-4">
             <input type="text" name="workerName" placeholder={t('settings_worker_name_placeholder')} required className={formInputStyle} />
             <input type="number" step="0.01" name="workerRate" placeholder={t('settings_worker_rate_placeholder')} className={formInputStyle} />
+            <input type="number" step="0.01" name="panelRate" placeholder={t('settings_worker_panel_rate_placeholder')} className={formInputStyle} />
+            <label className={formLabelStyle}>{t('settings_worker_cable_rates_label')}</label>
+            <div className="grid grid-cols-3 gap-2">
+                <input type="number" step="0.01" name="cableRateSmall" placeholder={t('work_table_size_small')} className={formInputStyle} />
+                <input type="number" step="0.01" name="cableRateMedium" placeholder={t('work_table_size_medium')} className={formInputStyle} />
+                <input type="number" step="0.01" name="cableRateLarge" placeholder={t('work_table_size_large')} className={formInputStyle} />
+            </div>
             <button type="submit" className={primaryButtonStyle}>{t('settings_add_worker_button')}</button>
           </form>
           <div className="space-y-2 max-h-48 overflow-y-auto">
               {workers.map(w => (
                   <div key={w.id} className="bg-white/5 p-3 rounded-lg flex justify-between items-center">
-                      <span className="font-semibold text-base">{w.name} (€{w.rate}/hr)</span>
-                      <button onClick={() => deleteWorker(w.id)} className="text-white/40 hover:text-red-500 font-bold text-xl px-2 transition active:scale-90">&times;</button>
+                      <div>
+                        <span className="font-semibold text-base">{w.name}</span>
+                        <span className="text-xs text-white/50 ml-2">(€{w.rate}/hr)</span>
+                      </div>
+                      <div className="flex items-center">
+                        <button onClick={() => handleOpenEditWorkerModal(w)} className="text-white/40 hover:text-[var(--accent-color)] p-2 transition duration-200 ease-in-out active:scale-95">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z" /></svg>
+                        </button>
+                        <button onClick={() => deleteWorker(w.id)} className="text-white/40 hover:text-red-500 p-2 ml-1 transition duration-200 ease-in-out active:scale-95">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                      </div>
                   </div>
               ))}
           </div>
@@ -247,6 +284,13 @@ const SettingsPage: React.FC = () => {
             onClose={() => setIsTeamModalOpen(false)}
             project={projectToManage}
           />
+      )}
+      {editingWorker && (
+        <EditWorkerModal
+          isOpen={isEditWorkerModalOpen}
+          onClose={() => setIsEditWorkerModalOpen(false)}
+          worker={editingWorker}
+        />
       )}
     </>
   );

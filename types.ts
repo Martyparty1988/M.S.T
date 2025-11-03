@@ -1,10 +1,14 @@
-export type Page = 'plan' | 'attendance' | 'records' | 'stats' | 'settings';
+export type Page = 'plan' | 'attendance' | 'records' | 'payroll' | 'settings';
 export type Theme = 'dusk' | 'slate' | 'forest' | 'crimson';
 
 export interface Worker {
   id: string;
   name: string;
-  rate: number;
+  rate: number; // hourly
+  panelRate?: number; // per panel
+  cableRateSmall?: number; // per small table
+  cableRateMedium?: number; // per medium table
+  cableRateLarge?: number; // per large table
 }
 
 export type ProjectStatus = 'active' | 'completed' | 'paused';
