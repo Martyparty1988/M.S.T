@@ -1,20 +1,24 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
-import { Project, WorkEntry, PanelingWorkEntry, ConstructionWorkEntry, CablesWorkEntry, HourlyWorkEntry, TableSize } from '../types';
+import { Project, WorkEntry, PanelingWorkEntry, ConstructionWorkEntry, CablesWorkEntry, HourlyWorkEntry, TableSize, Worker, AttendanceRecord } from '../types';
 import TableMap from '../components/TableMap';
+import SkeletonCard from '../components/SkeletonCard';
 
-type Step = 'project' | 'type' | 'task_subtype' | 'form';
+type Step = 'type' | 'task_subtype' | 'form';
 type WorkType = 'hourly' | 'task';
 type TaskSubType = 'paneling' | 'construction' | 'cables';
 type TableView = 'list' | 'map';
 
-const PlanPage: React.FC = () => {
-    const { projects, workers, workEntries, addWorkEntry, showToast } = useAppContext();
+// #region Work Log Form Component
+const WorkLogForm: React.FC<{
+    project: Project;
+    onClose: () => void;
+}> = ({ project, onClose }) => {
+    const { workers, addWorkEntry, showToast, workEntries } = useAppContext();
     const { t } = useI18n();
-
-    const [step, setStep] = useState<Step>('project');
-    const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+    
+    const [step, setStep] = useState<Step>('type');
     const [selectedWorkType, setSelectedWorkType] = useState<WorkType | null>(null);
     const [selectedTaskSubType, setSelectedTaskSubType] = useState<TaskSubType | null>(null);
     const [tableView, setTableView] = useState<TableView>('map');
@@ -30,205 +34,123 @@ const PlanPage: React.FC = () => {
     const [tableSize, setTableSize] = useState<TableSize>('medium');
     const [tableSearch, setTableSearch] = useState('');
     const [isTableListVisible, setIsTableListVisible] = useState(false);
-
     const tableDropdownRef = useRef<HTMLDivElement>(null);
-
+    
+    // #region Styles
     const formInputStyle = "w-full bg-white/10 text-white p-3 rounded-xl border border-white/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] focus:border-[var(--accent-color)] transition text-base font-normal";
     const formLabelStyle = "block mb-2 text-sm font-medium text-white/70";
     const cardButtonStyle = "floating-card p-5 text-center cursor-pointer hover:bg-white/20 transition duration-200 ease-in-out transform hover:scale-105 active:scale-100";
     const primaryButtonStyle = "w-full bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition duration-200 ease-in-out transform hover:scale-105 active:scale-95 shadow-lg disabled:opacity-50 text-base";
-    const secondaryButtonStyle = "w-full bg-white/10 hover:bg-white/20 text-white font-bold py-3 px-4 rounded-xl transition duration-200 ease-in-out active:scale-95";
+    // #endregion
 
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (tableDropdownRef.current && !tableDropdownRef.current.contains(event.target as Node)) {
-                setIsTableListVisible(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
+    const resetForm = useCallback(() => {
+        setWorkerId1(''); setWorkerId2(''); setStartTime(''); setEndTime('');
+        setDescription(''); setModuleCount(''); setTable(''); setTableSize('medium');
+        setTableSearch(''); setIsTableListVisible(false);
     }, []);
-
-    const completedTables = useMemo(() => {
-        if (!selectedProject) return new Set();
-        return new Set(
-            workEntries
-                .filter(e => e.projectId === selectedProject.id && e.type === 'task' && e.subType === 'cables')
-                .map(e => (e as CablesWorkEntry).table)
-        );
-    }, [workEntries, selectedProject]);
-
-    const filteredTables = useMemo(() => {
-        if (!selectedProject?.tables) return [];
-        return selectedProject.tables.filter(t_val => 
-            t_val.toLowerCase().includes(tableSearch.toLowerCase())
-        );
-    }, [selectedProject, tableSearch]);
-
-    const resetForm = () => {
-        setWorkerId1('');
-        setWorkerId2('');
-        setStartTime('');
-        setEndTime('');
-        setDescription('');
-        setModuleCount('');
-        setTable('');
-        setTableSize('medium');
-        setTableSearch('');
-        setIsTableListVisible(false);
-    };
     
     const handleBack = () => {
         if (step === 'form') {
-            if (selectedWorkType === 'task') {
-                setStep('task_subtype');
-            } else {
-                setStep('type');
-            }
             resetForm();
+            setStep(selectedWorkType === 'task' ? 'task_subtype' : 'type');
         } else if (step === 'task_subtype') {
             setStep('type');
         } else if (step === 'type') {
-            setStep('project');
-            setSelectedProject(null);
+            onClose();
         }
     };
-
-    const handleProjectSelect = (project: Project) => {
-        setSelectedProject(project);
-        setStep('type');
-    };
-
-    const handleWorkTypeSelect = (type: WorkType) => {
-        setSelectedWorkType(type);
-        if (type === 'hourly') {
-            setStep('form');
-        } else {
-            setStep('task_subtype');
-        }
-    };
-
-    const handleTaskSubTypeSelect = (subType: TaskSubType) => {
-        if (subType === 'cables' && (!selectedProject?.tables || selectedProject.tables.length === 0)) {
-            showToast(t('error_no_tables_in_project'));
-            return;
-        }
-        setSelectedTaskSubType(subType);
-        setStep('form');
-    };
+    
+    const completedTables = useMemo(() => new Set(
+        workEntries
+            .filter(e => e.projectId === project.id && e.type === 'task' && e.subType === 'cables')
+            .map(e => (e as CablesWorkEntry).table)
+    ), [workEntries, project.id]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedProject || !startTime || !endTime || !workerId1) {
-            showToast(t('error_form_incomplete'));
-            return;
-        }
+        if (!project || !startTime || !endTime || !workerId1) return showToast(t('error_form_incomplete'));
         
         const start = new Date(startTime);
         const end = new Date(endTime);
-        if (end <= start) {
-            showToast(t('error_end_time_before_start'));
-            return;
-        }
+        if (end <= start) return showToast(t('error_end_time_before_start'));
 
         const duration = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
         const workerIds = [workerId1];
         if (workerId2) workerIds.push(workerId2);
 
-        const baseEntryData = {
-            projectId: selectedProject.id,
-            workerIds,
-            startTime: start.toISOString(),
-            endTime: end.toISOString(),
-            duration,
-            date: start.toISOString(),
-        };
+        const baseEntryData = { projectId: project.id, workerIds, startTime: start.toISOString(), endTime: end.toISOString(), duration, date: start.toISOString() };
 
         let entry: Omit<WorkEntry, 'id'> | null = null;
         
         if (selectedWorkType === 'hourly') {
-            entry = {
-                ...baseEntryData,
-                type: 'hourly',
-                description,
-            } as Omit<HourlyWorkEntry, 'id'>;
+            entry = { ...baseEntryData, type: 'hourly', description } as Omit<HourlyWorkEntry, 'id'>;
         } else if (selectedWorkType === 'task') {
             switch(selectedTaskSubType) {
                 case 'paneling':
                     const modules = parseInt(moduleCount);
-                    if (isNaN(modules) || modules <= 0) {
-                        showToast(t('error_form_incomplete'));
-                        return;
-                    }
-                    entry = {
-                        ...baseEntryData,
-                        type: 'task',
-                        subType: 'paneling',
-                        moduleCount: modules,
-                        modulesPerHour: modules / duration,
-                    } as Omit<PanelingWorkEntry, 'id'>;
+                    if (isNaN(modules) || modules <= 0) return showToast(t('error_form_incomplete'));
+                    entry = { ...baseEntryData, type: 'task', subType: 'paneling', moduleCount: modules, modulesPerHour: modules / duration } as Omit<PanelingWorkEntry, 'id'>;
                     break;
                 case 'construction':
-                    if (!description) {
-                         showToast(t('error_form_incomplete'));
-                         return;
-                    }
-                    entry = {
-                        ...baseEntryData,
-                        type: 'task',
-                        subType: 'construction',
-                        description,
-                    } as Omit<ConstructionWorkEntry, 'id'>;
+                    if (!description) return showToast(t('error_form_incomplete'));
+                    entry = { ...baseEntryData, type: 'task', subType: 'construction', description } as Omit<ConstructionWorkEntry, 'id'>;
                     break;
                 case 'cables':
-                    if (!table) {
-                        showToast(t('error_select_table'));
-                        return;
-                    }
-                    entry = {
-                        ...baseEntryData,
-                        type: 'task',
-                        subType: 'cables',
-                        table,
-                        tableSize,
-                    } as Omit<CablesWorkEntry, 'id'>;
+                    if (!table) return showToast(t('error_select_table'));
+                    entry = { ...baseEntryData, type: 'task', subType: 'cables', table, tableSize } as Omit<CablesWorkEntry, 'id'>;
                     break;
             }
         }
         
         if (entry) {
             addWorkEntry(entry);
-            // Reset flow
-            setStep('project');
-            setSelectedProject(null);
-            setSelectedWorkType(null);
-            setSelectedTaskSubType(null);
-            resetForm();
+            onClose();
         }
     };
     
-    const availableWorkersForSecondSelect = useMemo(() => {
-        return workers.filter(w => w.id !== workerId1);
-    }, [workers, workerId1]);
-    
-    const renderForm = () => {
-        let title = '';
-        if (selectedWorkType === 'hourly') title = t('work_form_title_hourly');
-        else if (selectedTaskSubType === 'paneling') title = t('work_form_title_paneling');
-        else if (selectedTaskSubType === 'construction') title = t('work_form_title_construction');
-        else if (selectedTaskSubType === 'cables') title = t('work_form_title_cables');
-        
-        const showTimeAndWorkerFields = selectedWorkType === 'hourly' || selectedWorkType === 'task';
+    return (
+      <div className="h-full w-full flex flex-col overflow-hidden bg-[var(--bg-color)]">
+        <header className="flex items-center justify-between p-4" style={{ paddingTop: `calc(16px + var(--safe-area-inset-top))` }}>
+            <button onClick={handleBack} className="p-2 rounded-full hover:bg-white/10 transition active:scale-95">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            </button>
+             <h2 className="text-xl font-bold">{project.name}</h2>
+             <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 transition active:scale-95">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+        </header>
 
-        return (
-            <div className="p-1 space-y-4">
-                <h2 className="text-2xl font-bold text-center text-white">{title}</h2>
-                <h3 className="text-center text-white/70 -mt-2 mb-4 text-base font-normal">{t('stats_select_project_label')} <span className="font-semibold text-white">{selectedProject?.name}</span></h3>
-                <form onSubmit={handleSubmit} className="space-y-5">
-                    {showTimeAndWorkerFields && (
-                        <>
+        <div className="flex-grow overflow-y-auto p-4 space-y-6 scrolling-touch">
+            {step === 'type' && (
+                 <div className="space-y-4">
+                    <h2 className="text-2xl font-bold text-center text-white">{t('work_step2_title')}</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div onClick={() => { setSelectedWorkType('hourly'); setStep('form'); }} className={cardButtonStyle}>
+                            <h3 className="text-2xl font-bold text-white">{t('work_type_hourly')}</h3>
+                        </div>
+                         <div onClick={() => { setSelectedWorkType('task'); setStep('task_subtype'); }} className={cardButtonStyle}>
+                            <h3 className="text-2xl font-bold text-white">{t('work_type_task')}</h3>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {step === 'task_subtype' && (
+                <div className="space-y-4">
+                    <h2 className="text-2xl font-bold text-center text-white">{t('work_step3_title')}</h2>
+                    <div className="grid grid-cols-1 gap-4">
+                        <div onClick={() => { setSelectedTaskSubType('paneling'); setStep('form'); }} className={cardButtonStyle}><h3 className="text-xl font-bold text-white">{t('work_task_paneling')}</h3></div>
+                        <div onClick={() => { setSelectedTaskSubType('construction'); setStep('form'); }} className={cardButtonStyle}><h3 className="text-xl font-bold text-white">{t('work_task_construction')}</h3></div>
+                        <div onClick={() => { if (project.tables && project.tables.length > 0) { setSelectedTaskSubType('cables'); setStep('form'); } else { showToast(t('error_no_tables_in_project')); } }} className={`${cardButtonStyle} ${(!project.tables || project.tables.length === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}><h3 className="text-xl font-bold text-white">{t('work_task_cables')}</h3></div>
+                    </div>
+                </div>
+            )}
+            
+            {step === 'form' && (
+                 <div className="p-1 space-y-4">
+                    <h2 className="text-2xl font-bold text-center text-white">{selectedWorkType === 'hourly' ? t('work_form_title_hourly') : t(`work_form_title_${selectedTaskSubType}` as any)}</h2>
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                       <>
                             <div>
                                 <label className={formLabelStyle}>{t('work_worker1_label')}</label>
                                 <select value={workerId1} onChange={e => setWorkerId1(e.target.value)} required className={formInputStyle}>
@@ -240,7 +162,7 @@ const PlanPage: React.FC = () => {
                                 <label className={formLabelStyle}>{t('work_worker2_label')}</label>
                                 <select value={workerId2} onChange={e => setWorkerId2(e.target.value)} disabled={!workerId1} className={formInputStyle}>
                                     <option value="">{t('work_select_worker')}</option>
-                                    {availableWorkersForSecondSelect.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                                    {workers.filter(w => w.id !== workerId1).map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                                 </select>
                             </div>
                             <div>
@@ -252,155 +174,259 @@ const PlanPage: React.FC = () => {
                                 <input type="datetime-local" value={endTime} onChange={e => setEndTime(e.target.value)} required className={formInputStyle} />
                             </div>
                         </>
-                    )}
-                    {selectedWorkType === 'hourly' && (
-                        <div>
-                            <label className={formLabelStyle}>{t('work_description_label')}</label>
-                            <input type="text" value={description} onChange={e => setDescription(e.target.value)} className={formInputStyle} />
-                        </div>
-                    )}
-                    {selectedTaskSubType === 'paneling' && (
-                        <div>
-                            <label className={formLabelStyle}>{t('work_module_count_label')}</label>
-                            <input type="number" value={moduleCount} onChange={e => setModuleCount(e.target.value)} required className={formInputStyle} />
-                        </div>
-                    )}
-                    {selectedTaskSubType === 'construction' && (
-                        <div>
-                            <label className={formLabelStyle}>{t('work_construction_desc_label')}</label>
-                            <input type="text" value={description} onChange={e => setDescription(e.target.value)} required className={formInputStyle} />
-                        </div>
-                    )}
-                    {selectedTaskSubType === 'cables' && (
-                        <>
-                            <div className="flex justify-between items-center mb-2">
-                                <label className={formLabelStyle}>{t('work_table_number_label')}: <span className="font-semibold text-white text-base">{table || '...'}</span></label>
-                                <div className="bg-white/10 p-1 rounded-full flex items-center">
-                                    <button type="button" onClick={() => setTableView('map')} className={`px-3 py-1 text-xs rounded-full transition active:scale-95 ${tableView === 'map' ? 'bg-[var(--accent-color)] text-white' : 'text-white/70'}`}>{t('work_view_map')}</button>
-                                    <button type="button" onClick={() => setTableView('list')} className={`px-3 py-1 text-xs rounded-full transition active:scale-95 ${tableView === 'list' ? 'bg-[var(--accent-color)] text-white' : 'text-white/70'}`}>{t('work_view_list')}</button>
-                                </div>
-                            </div>
 
-                            {tableView === 'map' ? (
-                                <TableMap 
-                                    tables={selectedProject?.tables || []}
-                                    completedTables={completedTables}
-                                    selectedTable={table}
-                                    onTableSelect={setTable}
-                                />
-                            ) : (
-                                <div className="relative" ref={tableDropdownRef}>
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsTableListVisible(!isTableListVisible)}
-                                        className={`${formInputStyle} text-left flex justify-between items-center`}
-                                    >
-                                        <span className="text-base font-normal">{table || t('work_select_table')}</span>
-                                        <svg className={`w-5 h-5 transition-transform ${isTableListVisible ? 'rotate-180' : ''}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-                                    </button>
-                                    {isTableListVisible && (
-                                        <div className="absolute z-10 w-full mt-1 bg-gray-900/90 backdrop-blur-md border border-white/20 rounded-xl shadow-lg max-h-60">
-                                            <div className="p-2 sticky top-0 bg-gray-900/90">
-                                                <input
-                                                    type="text"
-                                                    placeholder={t('work_search_table_placeholder')}
-                                                    value={tableSearch}
-                                                    onChange={(e) => setTableSearch(e.target.value)}
-                                                    className={formInputStyle}
-                                                    autoFocus
-                                                />
-                                            </div>
-                                            <ul className="overflow-y-auto max-h-48">
-                                                {filteredTables.map(t_val => (
-                                                    <li
-                                                        key={t_val}
-                                                        onClick={() => {
-                                                            setTable(t_val);
-                                                            setIsTableListVisible(false);
-                                                            setTableSearch('');
-                                                        }}
-                                                        className="px-4 py-2 hover:bg-white/10 cursor-pointer text-base font-normal"
-                                                    >
-                                                        {t_val} {completedTables.has(t_val) ? <span className="text-xs text-[var(--accent-color-light)] ml-2">({t('stats_completed')})</span> : ''}
-                                                    </li>
-                                                ))}
-                                                {filteredTables.length === 0 && <li className="px-4 py-2 text-white/40 text-sm">{t('work_no_tables_found')}</li>}
-                                            </ul>
-                                        </div>
-                                    )}
+                        {/* Specific fields */}
+                        {selectedWorkType === 'hourly' && (<div><label className={formLabelStyle}>{t('work_description_label')}</label><input type="text" value={description} onChange={e => setDescription(e.target.value)} className={formInputStyle} /></div>)}
+                        {selectedTaskSubType === 'paneling' && (<div><label className={formLabelStyle}>{t('work_module_count_label')}</label><input type="number" value={moduleCount} onChange={e => setModuleCount(e.target.value)} required className={formInputStyle} /></div>)}
+                        {selectedTaskSubType === 'construction' && (<div><label className={formLabelStyle}>{t('work_construction_desc_label')}</label><input type="text" value={description} onChange={e => setDescription(e.target.value)} required className={formInputStyle} /></div>)}
+                        {selectedTaskSubType === 'cables' && (
+                            <>
+                                <div className="flex justify-between items-center mb-2">
+                                    <label className={formLabelStyle}>{t('work_table_number_label')}: <span className="font-semibold text-white text-base">{table || '...'}</span></label>
+                                    <div className="bg-white/10 p-1 rounded-full flex items-center">
+                                        <button type="button" onClick={() => setTableView('map')} className={`px-3 py-1 text-xs rounded-full transition active:scale-95 ${tableView === 'map' ? 'bg-[var(--accent-color)] text-white' : 'text-white/70'}`}>{t('work_view_map')}</button>
+                                        <button type="button" onClick={() => setTableView('list')} className={`px-3 py-1 text-xs rounded-full transition active:scale-95 ${tableView === 'list' ? 'bg-[var(--accent-color)] text-white' : 'text-white/70'}`}>{t('work_view_list')}</button>
+                                    </div>
                                 </div>
-                            )}
-                             <div className="mt-5">
-                                <label className={formLabelStyle}>{t('work_table_size_label')}</label>
-                                <select value={tableSize} onChange={e => setTableSize(e.target.value as TableSize)} required className={formInputStyle}>
-                                    <option value="small">{t('work_table_size_small')}</option>
-                                    <option value="medium">{t('work_table_size_medium')}</option>
-                                    <option value="large">{t('work_table_size_large')}</option>
-                                </select>
+                                {tableView === 'map' ? <TableMap tables={project?.tables || []} completedTables={completedTables} selectedTable={table} onTableSelect={setTable} />
+                                : (
+                                    <div className="relative" ref={tableDropdownRef}>
+                                        <input onClick={() => setIsTableListVisible(!isTableListVisible)} onFocus={() => setIsTableListVisible(true)} type="text" placeholder={t('work_search_table_placeholder')} value={tableSearch} onChange={(e) => setTableSearch(e.target.value)} className={formInputStyle} />
+                                        {isTableListVisible && (
+                                            <ul className="absolute z-10 w-full mt-1 bg-gray-900/90 backdrop-blur-md border border-white/20 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                                                {(project.tables || []).filter(t_val => t_val.toLowerCase().includes(tableSearch.toLowerCase())).map(t_val => (
+                                                    <li key={t_val} onClick={() => { setTable(t_val); setIsTableListVisible(false); setTableSearch(''); }} className="px-4 py-2 hover:bg-white/10 cursor-pointer">{t_val} {completedTables.has(t_val) && '✅'}</li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </div>
+                                )}
+
+                                <div>
+                                    <label className={formLabelStyle}>{t('work_table_size_label')}</label>
+                                    <select value={tableSize} onChange={e => setTableSize(e.target.value as TableSize)} required className={formInputStyle}>
+                                        <option value="small">{t('work_table_size_small')}</option>
+                                        <option value="medium">{t('work_table_size_medium')}</option>
+                                        <option value="large">{t('work_table_size_large')}</option>
+                                    </select>
+                                </div>
+                            </>
+                        )}
+                        <div className="pt-4"><button type="submit" className={primaryButtonStyle}>{t('work_save_button')}</button></div>
+                    </form>
+                 </div>
+            )}
+        </div>
+      </div>
+    );
+};
+// #endregion
+
+const PlanPage: React.FC = () => {
+    const { projects, workers, workEntries, attendanceRecords, setPage } = useAppContext();
+    const { t } = useI18n();
+    const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+    const [isFormVisible, setIsFormVisible] = useState(false);
+
+    // Set default project on load
+    React.useEffect(() => {
+        if (projects.length > 0 && !selectedProjectId) {
+            const activeProject = projects.find(p => p.status === 'active');
+            setSelectedProjectId(activeProject ? activeProject.id : projects[0].id);
+        }
+    }, [projects, selectedProjectId]);
+
+    const activeProject = useMemo(() => projects.find(p => p.id === selectedProjectId), [projects, selectedProjectId]);
+
+    const projectWorkers = useMemo(() => {
+        if (!activeProject) return [];
+        return activeProject.workerIds.map(id => workers.find(w => w.id === id)).filter(Boolean) as Worker[];
+    }, [activeProject, workers]);
+
+    const todaysAttendance = useMemo(() => {
+        const todayStr = new Date().toISOString().slice(0, 10);
+        return attendanceRecords.find(r => r.projectId === selectedProjectId && r.date === todayStr);
+    }, [attendanceRecords, selectedProjectId]);
+    
+    const weeklySummary = useMemo(() => {
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+        const recentEntries = workEntries.filter(e =>
+            new Date(e.date) > oneWeekAgo && e.projectId === selectedProjectId
+        );
+
+        let totalHours = 0;
+        let totalEarnings = 0;
+        const tables = new Set<string>();
+        const workerEarnings: { [key: string]: number } = {};
+
+        recentEntries.forEach(entry => {
+            const numWorkers = entry.workerIds.length;
+            if (numWorkers === 0) return;
+
+            totalHours += entry.duration;
+
+            entry.workerIds.forEach(workerId => {
+                const worker = workers.find(w => w.id === workerId);
+                if (!worker) return;
+
+                let earningsPart = 0;
+                const durationPart = entry.duration / numWorkers;
+
+                if (entry.type === 'hourly' || (entry.type === 'task' && entry.subType === 'construction')) {
+                    earningsPart = durationPart * (worker.rate || 0);
+                } else if (entry.type === 'task' && entry.subType === 'paneling') {
+                    earningsPart = (entry.moduleCount / numWorkers) * (worker.panelRate || 0);
+                } else if (entry.type === 'task' && entry.subType === 'cables') {
+                    let tableRate = 0;
+                    if (entry.tableSize === 'small') tableRate = worker.cableRateSmall || 0;
+                    else if (entry.tableSize === 'medium') tableRate = worker.cableRateMedium || 0;
+                    else if (entry.tableSize === 'large') tableRate = worker.cableRateLarge || 0;
+                    earningsPart = tableRate / numWorkers;
+                    tables.add(entry.table);
+                }
+                totalEarnings += earningsPart;
+                workerEarnings[workerId] = (workerEarnings[workerId] || 0) + earningsPart;
+            });
+        });
+
+        const topWorkerId = Object.keys(workerEarnings).sort((a,b) => workerEarnings[b] - workerEarnings[a])[0];
+        let topWorker = null;
+        if (topWorkerId) {
+            const worker = workers.find(w => w.id === topWorkerId);
+            if (worker) {
+                topWorker = { worker, earnings: workerEarnings[topWorkerId] };
+            }
+        }
+
+        return {
+            totalHours,
+            totalEarnings,
+            tablesCompleted: tables.size,
+            topWorker,
+        };
+    }, [workEntries, workers, selectedProjectId]);
+
+
+    const completedTablesCount = useMemo(() => {
+        if (!activeProject || !activeProject.tables || activeProject.tables.length === 0) return 0;
+        const completed = new Set(
+            workEntries
+            .filter(e => e.projectId === activeProject.id && e.type === 'task' && e.subType === 'cables')
+            .map(e => (e as CablesWorkEntry).table)
+        );
+        return completed.size;
+    }, [workEntries, activeProject]);
+
+    const totalTables = activeProject?.tables?.length || 0;
+    const progressPercent = totalTables > 0 ? (completedTablesCount / totalTables) * 100 : 0;
+
+    const renderDashboard = () => (
+        <div className="h-full w-full p-4 overflow-y-auto space-y-6 scrolling-touch">
+            {/* Project Selector */}
+            <div className="floating-card p-4">
+                <label className="block mb-2 text-sm font-medium text-white/70">{t('dashboard_project_selector')}</label>
+                <select value={selectedProjectId} onChange={e => setSelectedProjectId(e.target.value)} className="w-full bg-white/10 text-white p-3 rounded-xl border border-white/20 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] transition">
+                    {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+            </div>
+
+            {/* Attendance Card */}
+            <div className="floating-card p-5">
+                <h2 className="text-xl font-bold text-white mb-3">{t('dashboard_workers_on_site')}</h2>
+                {projectWorkers.length > 0 ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {projectWorkers.map(w => (
+                            <div key={w.id} className={`p-2 rounded-lg text-center ${todaysAttendance?.presentWorkerIds.includes(w.id) ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>
+                                <p className="font-semibold">{w.name}</p>
+                                <p className="text-xs">{todaysAttendance?.presentWorkerIds.includes(w.id) ? t('dashboard_present') : t('dashboard_absent')}</p>
                             </div>
-                        </>
-                    )}
-                    <div className="pt-2 space-y-4">
-                        <button type="submit" className={primaryButtonStyle}>{t('work_save_button')}</button>
-                        <button type="button" onClick={handleBack} className={secondaryButtonStyle}>{t('work_back_button')}</button>
+                        ))}
                     </div>
-                </form>
+                ) : (
+                     <p className="text-white/50">{t('attendance_no_workers_in_project')}</p>
+                )}
+                 {!todaysAttendance && projectWorkers.length > 0 && <p className="text-white/50 mt-2 text-sm">{t('dashboard_no_attendance')}</p>}
+            </div>
+
+            {/* Progress Card */}
+            {totalTables > 0 && (
+                <div className="floating-card p-5">
+                    <h2 className="text-xl font-bold text-white mb-3">{t('dashboard_progress_title')}</h2>
+                    <div className="w-full bg-white/10 rounded-full h-4">
+                        <div className="bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] h-4 rounded-full" style={{ width: `${progressPercent}%` }}></div>
+                    </div>
+                    <div className="flex justify-between items-center mt-2 text-sm text-white/80">
+                        <span>{completedTablesCount} / {totalTables} {t('dashboard_tables_completed')}</span>
+                        <span>{Math.round(progressPercent)}%</span>
+                    </div>
+                </div>
+            )}
+
+            {/* Weekly Recap Card */}
+            <div className="floating-card p-5">
+                <h2 className="text-xl font-bold text-white mb-3">{t('dashboard_weekly_recap_title')}</h2>
+                <div className="grid grid-cols-3 gap-4 text-center mb-4">
+                    <div>
+                        <p className="text-2xl font-bold text-white">{weeklySummary.totalHours.toFixed(1)}</p>
+                        <p className="text-xs text-white/60">{t('dashboard_total_hours_week')}</p>
+                    </div>
+                    <div>
+                        <p className="text-2xl font-bold text-white">€{weeklySummary.totalEarnings.toFixed(0)}</p>
+                        <p className="text-xs text-white/60">{t('dashboard_total_earnings_week')}</p>
+                    </div>
+                    <div>
+                        <p className="text-2xl font-bold text-white">{weeklySummary.tablesCompleted}</p>
+                        <p className="text-xs text-white/60">{t('dashboard_total_tables_week')}</p>
+                    </div>
+                </div>
+                {weeklySummary.topWorker && weeklySummary.topWorker.worker && (
+                    <div className="pt-3 border-t border-white/10">
+                        <h3 className="text-lg font-semibold text-white mb-2">{t('dashboard_weekly_star')} 🌟</h3>
+                        <div className="flex items-center space-x-4">
+                             <div className="text-3xl">🏆</div>
+                             <div>
+                                 <p className="text-2xl font-bold text-[var(--accent-color-light)]">{weeklySummary.topWorker.worker.name}</p>
+                                 <p className="text-white/70">€{weeklySummary.topWorker.earnings.toFixed(2)} {t('dashboard_earned_this_week')}</p>
+                             </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+    
+    if (!activeProject) {
+        return (
+            <div className="h-full w-full flex items-center justify-center p-4">
+                <div className="floating-card p-8 text-center">
+                    <p className="text-xl font-bold">{t('dashboard_no_project_selected')}</p>
+                    <button onClick={() => setPage('settings')} className="mt-4 bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] text-white font-bold py-2 px-4 rounded-lg">
+                        {t('settings_project_management_title')}
+                    </button>
+                </div>
             </div>
         );
     }
     
     return (
-        <div className="h-full w-full flex flex-col overflow-y-auto p-4 space-y-6 scrolling-touch">
-            {step === 'project' && (
-                <div className="space-y-4">
-                    <h2 className="text-2xl font-bold text-center text-white">{t('work_step1_title')}</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {projects.map(p => (
-                            <div key={p.id} onClick={() => handleProjectSelect(p)} className={cardButtonStyle}>
-                                <h3 className="text-2xl font-bold text-white">{p.name}</h3>
-                                <p className="text-white/70 capitalize text-sm">{p.status}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
+        <div className="h-full w-full flex flex-col relative">
+            {renderDashboard()}
 
-            {step === 'type' && (
-                 <div className="space-y-4">
-                    <h2 className="text-2xl font-bold text-center text-white">{t('work_step2_title')}</h2>
-                    <h3 className="text-center text-white/70 -mt-2 mb-4 text-base font-normal">{t('stats_select_project_label')} <span className="font-semibold text-white">{selectedProject?.name}</span></h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div onClick={() => handleWorkTypeSelect('hourly')} className={cardButtonStyle}>
-                            <h3 className="text-2xl font-bold text-white">{t('work_type_hourly')}</h3>
-                        </div>
-                         <div onClick={() => handleWorkTypeSelect('task')} className={cardButtonStyle}>
-                            <h3 className="text-2xl font-bold text-white">{t('work_type_task')}</h3>
-                        </div>
-                    </div>
-                    <button onClick={handleBack} className={`${secondaryButtonStyle} mt-4`}>{t('work_back_button')}</button>
+            <button
+                onClick={() => setIsFormVisible(true)}
+                className="absolute z-20 right-6 bottom-6 w-16 h-16 rounded-full bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] text-white shadow-lg flex items-center justify-center transform hover:scale-110 active:scale-95 transition-transform"
+                aria-label={t('dashboard_add_work_entry_button')}
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+            </button>
+            
+            {isFormVisible && (
+                <div className="absolute inset-0 z-30 slide-in-right">
+                    <WorkLogForm project={activeProject} onClose={() => setIsFormVisible(false)} />
                 </div>
             )}
-            
-            {step === 'task_subtype' && (
-                <div className="space-y-4">
-                    <h2 className="text-2xl font-bold text-center text-white">{t('work_step3_title')}</h2>
-                    <h3 className="text-center text-white/70 -mt-2 mb-4 text-base font-normal">{t('stats_select_project_label')} <span className="font-semibold text-white">{selectedProject?.name}</span></h3>
-                    <div className="grid grid-cols-1 gap-4">
-                        <div onClick={() => handleTaskSubTypeSelect('paneling')} className={cardButtonStyle}>
-                            <h3 className="text-xl font-bold text-white">{t('work_task_paneling')}</h3>
-                        </div>
-                        <div onClick={() => handleTaskSubTypeSelect('construction')} className={cardButtonStyle}>
-                            <h3 className="text-xl font-bold text-white">{t('work_task_construction')}</h3>
-                        </div>
-                         <div onClick={() => handleTaskSubTypeSelect('cables')} className={`${cardButtonStyle} ${(!selectedProject?.tables || selectedProject.tables.length === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                            <h3 className="text-xl font-bold text-white">{t('work_task_cables')}</h3>
-                        </div>
-                    </div>
-                     <button onClick={handleBack} className={`${secondaryButtonStyle} mt-4`}>{t('work_back_button')}</button>
-                </div>
-            )}
-            
-            {step === 'form' && renderForm()}
         </div>
     );
 };

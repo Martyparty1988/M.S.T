@@ -7,7 +7,13 @@ interface WorkerStats {
     id: string;
     name: string;
     totalEarnings: number;
+    totalHours: number;
+    avgHourlyWage: number;
     hourly: {
+        hours: number;
+        earnings: number;
+    };
+    construction: {
         hours: number;
         earnings: number;
     };
@@ -16,8 +22,12 @@ interface WorkerStats {
         earnings: number;
     };
     cables: {
-        tables: number;
+        tables: { small: number; medium: number; large: number; total: number; };
         earnings: number;
+        hours: number;
+        tablesPerHour: number;
+        eurosPerTable: number;
+        sharedTablesPercent: number;
     };
 }
 
@@ -54,20 +64,40 @@ const WorkerPayrollCard: React.FC<{ data: WorkerStats }> = ({ data }) => {
                 <div className="mt-4 pt-4 border-t border-white/20 space-y-2">
                     <h4 className="text-lg font-semibold text-white/90 mb-2">{t('payroll_details_title')}</h4>
                     <StatRow 
+                        label={t('payroll_avg_hourly_wage')}
+                        performance={`${data.totalHours.toFixed(2)} ${t('records_hours_unit')}`}
+                        earnings={`€${data.avgHourlyWage.toFixed(2)}`}
+                    />
+                    <StatRow 
                         label={t('payroll_hourly_work')}
                         performance={`${data.hourly.hours.toFixed(2)} ${t('records_hours_unit')}`}
                         earnings={`€${data.hourly.earnings.toFixed(2)}`}
                     />
                      <StatRow 
+                        label={t('work_task_construction')}
+                        performance={`${data.construction.hours.toFixed(2)} ${t('records_hours_unit')}`}
+                        earnings={`€${data.construction.earnings.toFixed(2)}`}
+                    />
+                     <StatRow 
                         label={t('payroll_paneling_work')}
-                        performance={`${data.paneling.panels.toFixed(2)} ${t('records_modules_label')}`}
+                        performance={`${data.paneling.panels.toFixed(0)} ${t('records_modules_label')}`}
                         earnings={`€${data.paneling.earnings.toFixed(2)}`}
                     />
                      <StatRow 
                         label={t('payroll_cables_work')}
-                        performance={`${data.cables.tables.toFixed(2)} ${t('payroll_total_tables')}`}
+                        performance={`${data.cables.tables.total.toFixed(2)} ${t('payroll_total_tables')}`}
                         earnings={`€${data.cables.earnings.toFixed(2)}`}
                     />
+                    <div className="pl-4">
+                        <p className="text-sm text-white/70">{t('payroll_tables_per_hour')}: <span className="font-semibold text-white">{data.cables.tablesPerHour.toFixed(2)}</span></p>
+                        <p className="text-sm text-white/70">{t('payroll_euros_per_table')}: <span className="font-semibold text-white">€{data.cables.eurosPerTable.toFixed(2)}</span></p>
+                        <p className="text-sm text-white/70">{t('payroll_shared_tables_percent')}: <span className="font-semibold text-white">{data.cables.sharedTablesPercent.toFixed(1)}%</span></p>
+                        <p className="text-sm text-white/70">{t('payroll_tables_split')}: 
+                            <span className="font-semibold text-white"> S:</span> {data.cables.tables.small.toFixed(2)}
+                            <span className="font-semibold text-white"> M:</span> {data.cables.tables.medium.toFixed(2)}
+                            <span className="font-semibold text-white"> L:</span> {data.cables.tables.large.toFixed(2)}
+                        </p>
+                    </div>
                 </div>
             )}
         </div>
@@ -76,87 +106,215 @@ const WorkerPayrollCard: React.FC<{ data: WorkerStats }> = ({ data }) => {
 
 
 const PayrollPage: React.FC = () => {
-    const { workEntries, workers } = useAppContext();
+    const { workEntries, workers, projects } = useAppContext();
     const { t } = useI18n();
 
-    const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+    const today = new Date();
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
+
+    const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+    const [dateRange, setDateRange] = useState({ start: startOfMonth, end: endOfMonth });
+    const [selectedWorkerIds, setSelectedWorkerIds] = useState<Set<string>>(new Set());
+    const [selectedWorkTypes, setSelectedWorkTypes] = useState<Set<string>>(new Set(['hourly', 'paneling', 'construction', 'cables']));
 
     const formInputStyle = "w-full bg-white/10 text-white p-3 rounded-xl border border-white/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] focus:border-[var(--accent-color)] transition text-base font-normal";
 
-    const monthlyStats = useMemo(() => {
-        const stats: { [key: string]: WorkerStats } = {};
+    const handleWorkerSelection = (workerId: string) => {
+        setSelectedWorkerIds(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(workerId)) newSet.delete(workerId);
+            else newSet.add(workerId);
+            return newSet;
+        });
+    };
+
+    const handleWorkTypeSelection = (workType: string) => {
+        setSelectedWorkTypes(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(workType)) newSet.delete(workType);
+            else newSet.add(workType);
+            return newSet;
+        });
+    };
+
+    const stats = useMemo(() => {
+        const stats: { [key: string]: any } = {};
+        
+        const workerRates: {[key: string]: Worker} = workers.reduce((acc, w) => ({...acc, [w.id]: w}), {});
 
         workers.forEach(worker => {
             stats[worker.id] = {
                 id: worker.id,
                 name: worker.name,
-                totalEarnings: 0,
+                totalEarnings: 0, totalHours: 0,
                 hourly: { hours: 0, earnings: 0 },
+                construction: { hours: 0, earnings: 0 },
                 paneling: { panels: 0, earnings: 0 },
-                cables: { tables: 0, earnings: 0 },
+                cables: { tables: { small: 0, medium: 0, large: 0, total: 0 }, earnings: 0, hours: 0, sharedEntryCount: 0, totalEntryCount: 0 },
             };
         });
 
-        const filteredEntries = workEntries.filter(entry => entry.date.startsWith(selectedMonth));
+        const filteredEntries = workEntries.filter(entry => {
+            const entryDate = new Date(entry.date);
+            const startDate = new Date(dateRange.start);
+            const endDate = new Date(dateRange.end);
+            endDate.setHours(23, 59, 59, 999); // Include full end day
+
+            const isProjectMatch = !selectedProjectId || entry.projectId === selectedProjectId;
+            const isDateMatch = entryDate >= startDate && entryDate <= endDate;
+            const isWorkerMatch = selectedWorkerIds.size === 0 || entry.workerIds.some(id => selectedWorkerIds.has(id));
+            const entryType = entry.type === 'task' ? entry.subType : 'hourly';
+            const isWorkTypeMatch = selectedWorkTypes.size === 0 || selectedWorkTypes.has(entryType);
+
+            return isProjectMatch && isDateMatch && isWorkerMatch && isWorkTypeMatch;
+        });
         
         filteredEntries.forEach(entry => {
             const numWorkers = entry.workerIds.length;
             if (numWorkers === 0) return;
 
             entry.workerIds.forEach(workerId => {
-                const worker = workers.find(w => w.id === workerId);
+                const worker = workerRates[workerId];
                 if (!worker || !stats[workerId]) return;
+                
+                if (selectedWorkerIds.size > 0 && !selectedWorkerIds.has(workerId)) return;
 
                 let earnings = 0;
+                const durationPart = entry.duration / numWorkers;
+                stats[workerId].totalHours += durationPart;
                 
-                if (entry.type === 'hourly' || (entry.type === 'task' && entry.subType === 'construction')) {
-                    const hourlyRate = worker.rate || 0;
-                    earnings = (entry.duration * hourlyRate) / numWorkers;
-                    stats[workerId].hourly.hours += entry.duration / numWorkers;
+                if (entry.type === 'hourly') {
+                    earnings = durationPart * (worker.rate || 0);
+                    stats[workerId].hourly.hours += durationPart;
                     stats[workerId].hourly.earnings += earnings;
+                } else if (entry.type === 'task' && entry.subType === 'construction') {
+                    earnings = durationPart * (worker.rate || 0);
+                    stats[workerId].construction.hours += durationPart;
+                    stats[workerId].construction.earnings += earnings;
                 } else if (entry.type === 'task' && entry.subType === 'paneling') {
-                    const panelRate = worker.panelRate || 0;
-                    const panels = (entry as PanelingWorkEntry).moduleCount;
-                    earnings = (panels * panelRate) / numWorkers;
-                    stats[workerId].paneling.panels += panels / numWorkers;
+                    const panelsPart = entry.moduleCount / numWorkers;
+                    earnings = panelsPart * (worker.panelRate || 0);
+                    stats[workerId].paneling.panels += panelsPart;
                     stats[workerId].paneling.earnings += earnings;
                 } else if (entry.type === 'task' && entry.subType === 'cables') {
-                    const cableEntry = entry as CablesWorkEntry;
                     let tableRate = 0;
-                    switch (cableEntry.tableSize) {
-                        case 'small': tableRate = worker.cableRateSmall || 0; break;
-                        case 'medium': tableRate = worker.cableRateMedium || 0; break;
-                        case 'large': tableRate = worker.cableRateLarge || 0; break;
-                    }
+                    if(entry.tableSize === 'small') tableRate = worker.cableRateSmall || 0;
+                    else if(entry.tableSize === 'medium') tableRate = worker.cableRateMedium || 0;
+                    else if(entry.tableSize === 'large') tableRate = worker.cableRateLarge || 0;
+                    
                     earnings = tableRate / numWorkers;
-                    stats[workerId].cables.tables += 1 / numWorkers;
+                    
+                    if(entry.tableSize) stats[workerId].cables.tables[entry.tableSize] += 1 / numWorkers;
+                    stats[workerId].cables.tables.total += 1 / numWorkers;
                     stats[workerId].cables.earnings += earnings;
+                    stats[workerId].cables.hours += durationPart;
+                    stats[workerId].cables.totalEntryCount++;
+                    if (numWorkers > 1) stats[workerId].cables.sharedEntryCount++;
                 }
                 stats[workerId].totalEarnings += earnings;
             });
         });
         
         return Object.values(stats)
+            .map((s: any) => ({
+                ...s,
+                avgHourlyWage: s.totalHours > 0 ? s.totalEarnings / s.totalHours : 0,
+                cables: {
+                    ...s.cables,
+                    tablesPerHour: s.cables.hours > 0 ? s.cables.tables.total / s.cables.hours : 0,
+                    eurosPerTable: s.cables.tables.total > 0 ? s.cables.earnings / s.cables.tables.total : 0,
+                    sharedTablesPercent: s.cables.totalEntryCount > 0 ? (s.cables.sharedEntryCount / s.cables.totalEntryCount) * 100 : 0,
+                }
+            }))
             .filter(s => s.totalEarnings > 0)
-            .sort((a,b) => b.totalEarnings - a.totalEarnings);
+            .sort((a,b) => b.totalEarnings - a.totalEarnings) as WorkerStats[];
 
-    }, [workEntries, workers, selectedMonth]);
+    }, [workEntries, workers, selectedProjectId, dateRange, selectedWorkerIds, selectedWorkTypes]);
 
+    const exportToCsv = () => {
+        const headers = ["Worker", "Total Earnings (€)", "Avg Wage (€/h)", "Total Hours", "Hourly Hours", "Construction Hours", "Panels", "Total Tables", "Small Tables", "Medium Tables", "Large Tables", "Cable Hours", "Tables/Hour", "€/Table", "% Shared Tables"];
+        const rows = stats.map(s => [
+            s.name,
+            s.totalEarnings.toFixed(2),
+            s.avgHourlyWage.toFixed(2),
+            s.totalHours.toFixed(2),
+            s.hourly.hours.toFixed(2),
+            s.construction.hours.toFixed(2),
+            s.paneling.panels.toFixed(2),
+            s.cables.tables.total.toFixed(2),
+            s.cables.tables.small.toFixed(2),
+            s.cables.tables.medium.toFixed(2),
+            s.cables.tables.large.toFixed(2),
+            s.cables.hours.toFixed(2),
+            s.cables.tablesPerHour.toFixed(2),
+            s.cables.eurosPerTable.toFixed(2),
+            s.cables.sharedTablesPercent.toFixed(1)
+        ].join(','));
+
+        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join("\n");
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `payroll_stats_${dateRange.start}_to_${dateRange.end}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const workTypeOptions = ['hourly', 'paneling', 'construction', 'cables'];
 
     return (
         <div className="h-full w-full p-4 flex flex-col overflow-hidden">
-            <div className="floating-card p-5 mb-6">
-                <label className="block mb-2 text-sm font-medium text-white/70">{t('payroll_select_month')}</label>
-                <input
-                    type="month"
-                    value={selectedMonth}
-                    onChange={e => setSelectedMonth(e.target.value)}
-                    className={formInputStyle}
-                />
+            <div className="floating-card p-5 mb-6 space-y-4">
+                 <div className="flex justify-between items-center">
+                    <h2 className="text-xl font-bold text-white">{t('payroll_filters_title')}</h2>
+                    <button onClick={exportToCsv} className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-3 rounded-xl transition text-sm active:scale-95">{t('payroll_export_csv_button')}</button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label className="block mb-2 text-sm font-medium text-white/70">{t('payroll_project_label')}</label>
+                        <select value={selectedProjectId} onChange={e => setSelectedProjectId(e.target.value)} className={formInputStyle}>
+                            <option value="">{t('payroll_all_projects')}</option>
+                            {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        </select>
+                    </div>
+                     <div>
+                        <label className="block mb-2 text-sm font-medium text-white/70">{t('payroll_start_date_label')}</label>
+                        <input type="date" value={dateRange.start} onChange={e => setDateRange(prev => ({...prev, start: e.target.value}))} className={formInputStyle} />
+                    </div>
+                     <div>
+                        <label className="block mb-2 text-sm font-medium text-white/70">{t('payroll_end_date_label')}</label>
+                        <input type="date" value={dateRange.end} onChange={e => setDateRange(prev => ({...prev, end: e.target.value}))} className={formInputStyle} />
+                    </div>
+                </div>
+                <div>
+                    <label className="block mb-2 text-sm font-medium text-white/70">{t('payroll_workers_label')}</label>
+                    <div className="max-h-24 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 p-2 bg-black/20 rounded-lg">
+                        {workers.map(w => (
+                            <label key={w.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-white/10 cursor-pointer">
+                                <input type="checkbox" checked={selectedWorkerIds.has(w.id)} onChange={() => handleWorkerSelection(w.id)} className="form-checkbox h-4 w-4 rounded bg-white/20 border-white/30 text-[var(--accent-color)] focus:ring-[var(--accent-color)]"/>
+                                <span className="text-sm">{w.name}</span>
+                            </label>
+                        ))}
+                    </div>
+                </div>
+                <div>
+                    <label className="block mb-2 text-sm font-medium text-white/70">{t('payroll_work_types_label')}</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {workTypeOptions.map(wt => (
+                             <label key={wt} className="flex items-center space-x-2 p-2 rounded-md hover:bg-white/10 cursor-pointer">
+                                <input type="checkbox" checked={selectedWorkTypes.has(wt)} onChange={() => handleWorkTypeSelection(wt)} className="form-checkbox h-4 w-4 rounded bg-white/20 border-white/30 text-[var(--accent-color)] focus:ring-[var(--accent-color)]"/>
+                                <span className="text-sm capitalize">{t(`work_task_${wt}` as any) || t(`work_type_${wt}` as any)}</span>
+                            </label>
+                        ))}
+                    </div>
+                </div>
             </div>
-            {monthlyStats.length > 0 ? (
-                 <div className="flex-grow overflow-y-auto space-y-4 scrolling-touch">
-                    {monthlyStats.map(workerStat => (
+
+            {stats.length > 0 ? (
+                 <div className="flex-grow overflow-y-auto space-y-4 scrolling-touch pb-4">
+                    {stats.map(workerStat => (
                         <WorkerPayrollCard key={workerStat.id} data={workerStat} />
                     ))}
                  </div>

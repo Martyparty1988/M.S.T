@@ -41,7 +41,7 @@ interface AppContextType extends AppState {
   deleteWorkEntry: (id: string) => void;
   saveAttendance: (projectId: string, date: string, presentWorkerIds: string[]) => void;
   mergeImportedData: (data: any, setTheme: (theme: Theme) => void, setLocale: (locale: Locale) => void) => void;
-
+  
   showToast: (message: string) => void;
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
 }
@@ -53,6 +53,7 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
   const [workers, setWorkers] = useLocalStorage<Worker[]>('workers', []);
   const [workEntries, setWorkEntries] = useLocalStorage<WorkEntry[]>('workEntries', []);
   const [attendanceRecords, setAttendanceRecords] = useLocalStorage<AttendanceRecord[]>('attendanceRecords', []);
+
   const [page, setPage] = useState<Page>('plan');
   const [toast, setToast] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -71,7 +72,7 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
 
   const deleteProject = useCallback((id: string) => {
     if (id === ZARASAI_PROJECT.id) {
-      // Potentially show a toast that the default project cannot be deleted
+      showToast('Cannot delete the default Zarasai project.');
       return;
     }
     setProjects(prev => prev.filter(p => p.id !== id));
@@ -107,19 +108,16 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
   const deleteWorker = useCallback((id: string) => {
     setWorkers(prev => prev.filter(w => w.id !== id));
     
-    // Also remove the worker from any work entries
     setWorkEntries(prev => prev.map(entry => ({
       ...entry,
       workerIds: entry.workerIds.filter(workerId => workerId !== id)
-    })).filter(entry => entry.workerIds.length > 0)); // Remove entries if no workers are left
+    })).filter(entry => entry.workerIds.length > 0)); 
     
-    // Also remove from project teams
     setProjects(prev => prev.map(p => ({
       ...p,
       workerIds: p.workerIds.filter(workerId => workerId !== id)
     })));
 
-    // Also remove from attendance records
     setAttendanceRecords(prev => prev.map(ar => ({
         ...ar,
         presentWorkerIds: ar.presentWorkerIds.filter(workerId => workerId !== id)
@@ -162,14 +160,12 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
       });
       showToast(t('toast_attendance_saved'));
   }, [setAttendanceRecords, t]);
-
+  
   const mergeImportedData = useCallback((data: any, setTheme: (theme: Theme) => void, setLocale: (locale: Locale) => void) => {
-    // 1. Merge Projects
     const localProjects = new Map(projects.map(p => [p.id, p]));
     if (data.projects) {
         data.projects.forEach((p: Project) => {
-            if (p.id === ZARASAI_PROJECT.id) return; // Never overwrite predefined project
-            // ensure workerIds is present
+            if (p.id === ZARASAI_PROJECT.id) return;
             const projectWithDefaults = {...{workerIds: []}, ...p};
             localProjects.set(p.id, projectWithDefaults);
         });
@@ -179,7 +175,6 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     }
     setProjects(Array.from(localProjects.values()));
 
-    // 2. Merge Workers
     const localWorkers = new Map(workers.map(w => [w.id, w]));
     if (data.workers) {
         data.workers.forEach((w: Worker) => {
@@ -188,7 +183,6 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     }
     setWorkers(Array.from(localWorkers.values()));
 
-    // 3. Merge Work Entries
     const localWorkEntries = new Map(workEntries.map(e => [e.id, e]));
     if (data.workEntries) {
         data.workEntries.forEach((e: WorkEntry) => {
@@ -197,7 +191,6 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     }
     setWorkEntries(Array.from(localWorkEntries.values()));
     
-    // 4. Merge Attendance Records
     const localAttendance = new Map(attendanceRecords.map(a => [a.id, a]));
     if (data.attendanceRecords) {
         data.attendanceRecords.forEach((a: AttendanceRecord) => {
@@ -206,7 +199,6 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     }
     setAttendanceRecords(Array.from(localAttendance.values()));
 
-    // 5. Merge Settings
     if (data.theme) setTheme(data.theme);
     if (data.locale) setLocale(data.locale);
 

@@ -18,7 +18,7 @@ const SettingsPage: React.FC = () => {
   const { 
     projects, addProject, deleteProject, 
     workers, addWorker, deleteWorker, 
-    workEntries, showToast, mergeImportedData
+    workEntries, showToast, mergeImportedData,
   } = useAppContext();
   const { t, locale, setLocale } = useI18n();
   const { theme, setTheme } = useTheme();
@@ -28,7 +28,7 @@ const SettingsPage: React.FC = () => {
 
   const [isEditWorkerModalOpen, setIsEditWorkerModalOpen] = useState(false);
   const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
-
+  
   const formInputStyle = "w-full bg-white/10 text-white p-3 rounded-xl border border-white/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] focus:border-[var(--accent-color)] transition text-base font-normal";
   const formLabelStyle = "block mb-2 text-sm font-medium text-white/70";
   const primaryButtonStyle = "w-full bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition duration-200 ease-in-out transform hover:scale-105 active:scale-95 shadow-lg";

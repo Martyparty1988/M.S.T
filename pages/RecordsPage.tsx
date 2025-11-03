@@ -232,7 +232,12 @@ const RecordsPage: React.FC = () => {
                         <p className={textStyle}>{entry.description}</p>
                     </>;
                 case 'cables':
-                    return <p className={textStyle}>{t('records_entry_type_cables')}: <span className={valueStyle}>{t('records_table_label')} {entry.table} ({t('work_table_size_' + entry.tableSize)})</span></p>;
+                    return <p className={textStyle}>{t('records_entry_type_cables')}: <span className={valueStyle}>{t('records_table_label')} {entry.table}
+                        {entry.tableSize ? 
+                          ` (${t('work_table_size_' + entry.tableSize)})` :
+                          <span className="text-yellow-400 font-bold ml-2">({t('records_size_missing_warning')})</span>
+                        }
+                    </span></p>;
             }
     }
   }
