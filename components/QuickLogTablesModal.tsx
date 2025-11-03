@@ -3,6 +3,7 @@ import { useAppContext } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
 import { Project, Worker, TableSize, CablesWorkEntry } from '../types';
 import TableMap from './TableMap';
+import Modal from './Modal';
 
 interface QuickLogTablesModalProps {
   isOpen: boolean;
@@ -38,7 +39,7 @@ const QuickLogTablesModal: React.FC<QuickLogTablesModalProps> = ({ isOpen, onClo
             setStartTime('');
             setEndTime('');
         }
-    }, [isOpen, project]);
+    }, [isOpen]);
 
     const handleToggleTable = useCallback((table: string) => {
         if (completedTables.has(table)) return; // Don't allow selecting completed tables
@@ -65,11 +66,7 @@ const QuickLogTablesModal: React.FC<QuickLogTablesModalProps> = ({ isOpen, onClo
     }, [completedTables]);
     
     const handleSetTableSize = (table: string, size: TableSize) => {
-        setTableSizes(prev => {
-            const newMap = new Map(prev);
-            newMap.set(table, size);
-            return newMap;
-        });
+        setTableSizes(prev => new Map(prev).set(table, size));
     };
 
     const handleToggleWorker = (workerId: string) => {
@@ -114,28 +111,19 @@ const QuickLogTablesModal: React.FC<QuickLogTablesModalProps> = ({ isOpen, onClo
 
         const duration = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
         const workerIds = [...selectedWorkerIds];
-        const tablesToLog = [...selectedTables];
         
-        const newEntries: Omit<CablesWorkEntry, 'id'>[] = [];
-
-        tablesToLog.forEach(table => {
-            const tableSize = tableSizes.get(table);
-            if(!tableSize) return;
-
-            const entry: Omit<CablesWorkEntry, 'id'> = {
-                projectId: project.id,
-                workerIds,
-                startTime: start.toISOString(),
-                endTime: end.toISOString(),
-                duration,
-                date: start.toISOString(),
-                type: 'task',
-                subType: 'cables',
-                table,
-                tableSize,
-            };
-            newEntries.push(entry);
-        });
+        const newEntries = [...selectedTables].map(table => ({
+            projectId: project.id,
+            workerIds,
+            startTime: start.toISOString(),
+            endTime: end.toISOString(),
+            duration,
+            date: start.toISOString(),
+            type: 'task' as 'task',
+            subType: 'cables' as 'cables',
+            table,
+            tableSize: tableSizes.get(table) || 'medium',
+        }));
 
         if (newEntries.length > 0) {
             addMultipleWorkEntries(newEntries);
@@ -149,25 +137,25 @@ const QuickLogTablesModal: React.FC<QuickLogTablesModalProps> = ({ isOpen, onClo
     const primaryButtonStyle = "w-full bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition duration-200 ease-in-out transform hover:scale-105 active:scale-95 shadow-lg disabled:opacity-50 text-base";
     
     return (
-        <div className="absolute inset-0 z-30 bg-[var(--bg-color)] flex flex-col overflow-hidden">
-            <header className="flex items-center justify-between p-4 flex-shrink-0" style={{ paddingTop: `calc(16px + var(--safe-area-inset-top))` }}>
-                <h2 className="text-xl font-bold">{t('dashboard_quick_log_button')}</h2>
-                <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 transition active:scale-95">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-            </header>
-
-            <main className="flex-grow p-4 relative">
+        <Modal
+          isOpen={isOpen}
+          onClose={onClose}
+          title={t('dashboard_quick_log_button')}
+          closeOnOverlayClick={false}
+          maxWidthClass="max-w-4xl"
+        >
+          <div className="space-y-4">
+            <div className="h-96 w-full">
                 <TableMap 
                     tables={project.tables || []} 
                     completedTables={completedTables} 
                     selectedTables={selectedTables} 
                     onTableSelect={handleToggleTable} 
                 />
-            </main>
+            </div>
 
             {selectedTables.size > 0 && (
-                <footer className="floating-card m-4 p-4 space-y-4 slide-in-bottom scrolling-touch" style={{ paddingBottom: `calc(16px + var(--safe-area-inset-bottom))` }}>
+                <div className="space-y-4 pt-4 border-t border-white/20">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className={formLabelStyle}>{t('payroll_workers_label')}</label>
@@ -221,9 +209,10 @@ const QuickLogTablesModal: React.FC<QuickLogTablesModalProps> = ({ isOpen, onClo
                     <button onClick={handleLogTables} disabled={selectedWorkerIds.size === 0 || !startTime || !endTime} className={primaryButtonStyle}>
                         {t('quick_log_save_button', selectedTables.size)}
                     </button>
-                </footer>
+                </div>
             )}
-        </div>
+            </div>
+        </Modal>
     );
 };
 

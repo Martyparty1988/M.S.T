@@ -484,14 +484,12 @@ const PlanPage: React.FC = () => {
                 </div>
             )}
 
-            {isQuickLogVisible && activeProject && (
-                <div className="absolute inset-0 z-30 slide-in-right">
-                   <QuickLogTablesModal
-                        isOpen={isQuickLogVisible}
-                        onClose={() => setIsQuickLogVisible(false)}
-                        project={activeProject}
-                    />
-                </div>
+            {activeProject && (
+                <QuickLogTablesModal
+                    isOpen={isQuickLogVisible}
+                    onClose={() => setIsQuickLogVisible(false)}
+                    project={activeProject}
+                />
             )}
         </div>
     );
