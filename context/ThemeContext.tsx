@@ -10,11 +10,11 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setTheme] = useLocalStorage<Theme>('theme', 'default');
+  const [theme, setTheme] = useLocalStorage<Theme>('theme', 'dusk');
 
   useEffect(() => {
     // remove all possible theme classes
-    document.body.classList.remove('theme-default', 'theme-oceanic', 'theme-sunset', 'theme-forest');
+    document.body.classList.remove('theme-dusk', 'theme-slate', 'theme-forest', 'theme-crimson');
     // add the current theme class
     document.body.classList.add(`theme-${theme}`);
   }, [theme]);

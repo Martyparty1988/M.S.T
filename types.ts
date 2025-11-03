@@ -1,5 +1,5 @@
 export type Page = 'plan' | 'records' | 'stats' | 'settings';
-export type Theme = 'default' | 'oceanic' | 'sunset' | 'forest';
+export type Theme = 'dusk' | 'slate' | 'forest' | 'crimson';
 
 export interface Worker {
   id: string;

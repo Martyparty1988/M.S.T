@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
@@ -34,11 +33,11 @@ const PlanPage: React.FC = () => {
 
     const tableDropdownRef = useRef<HTMLDivElement>(null);
 
-    const formInputStyle = "w-full bg-white/10 text-white p-3 rounded-xl border border-white/20 placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] focus:border-[var(--accent-color)] transition";
+    const formInputStyle = "w-full bg-white/10 text-white p-3 rounded-xl border border-white/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] focus:border-[var(--accent-color)] transition text-base font-normal";
     const formLabelStyle = "block mb-2 text-sm font-medium text-white/70";
-    const cardButtonStyle = "floating-card p-6 text-center cursor-pointer hover:bg-white/10 transition duration-300 transform hover:scale-105 active:scale-100";
-    const primaryButtonStyle = "w-full bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition duration-200 transform hover:scale-105 active:scale-100 shadow-lg disabled:opacity-50";
-    const secondaryButtonStyle = "w-full bg-white/10 hover:bg-white/20 text-white font-bold py-3 px-4 rounded-xl transition duration-200";
+    const cardButtonStyle = "floating-card p-5 text-center cursor-pointer hover:bg-white/20 transition duration-200 ease-in-out transform hover:scale-105 active:scale-100";
+    const primaryButtonStyle = "w-full bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition duration-200 ease-in-out transform hover:scale-105 active:scale-95 shadow-lg disabled:opacity-50 text-base";
+    const secondaryButtonStyle = "w-full bg-white/10 hover:bg-white/20 text-white font-bold py-3 px-4 rounded-xl transition duration-200 ease-in-out active:scale-95";
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -224,9 +223,9 @@ const PlanPage: React.FC = () => {
         const showTimeAndWorkerFields = selectedWorkType === 'hourly' || selectedWorkType === 'task';
 
         return (
-            <div className="p-4 space-y-4">
-                <h2 className="text-xl font-bold text-center text-white">{title}</h2>
-                <h3 className="text-center text-white/70 -mt-2 mb-4">{t('stats_select_project_label')} <span className="font-semibold text-white">{selectedProject?.name}</span></h3>
+            <div className="p-1 space-y-4">
+                <h2 className="text-2xl font-bold text-center text-white">{title}</h2>
+                <h3 className="text-center text-white/70 -mt-2 mb-4 text-base font-normal">{t('stats_select_project_label')} <span className="font-semibold text-white">{selectedProject?.name}</span></h3>
                 <form onSubmit={handleSubmit} className="space-y-5">
                     {showTimeAndWorkerFields && (
                         <>
@@ -275,10 +274,10 @@ const PlanPage: React.FC = () => {
                     {selectedTaskSubType === 'cables' && (
                         <>
                             <div className="flex justify-between items-center mb-2">
-                                <label className={formLabelStyle}>{t('work_table_number_label')}: <span className="font-bold text-white text-base">{table || '...'}</span></label>
+                                <label className={formLabelStyle}>{t('work_table_number_label')}: <span className="font-semibold text-white text-base">{table || '...'}</span></label>
                                 <div className="bg-white/10 p-1 rounded-full flex items-center">
-                                    <button type="button" onClick={() => setTableView('map')} className={`px-3 py-1 text-xs rounded-full transition ${tableView === 'map' ? 'bg-[var(--accent-color)] text-white' : 'text-white/70'}`}>{t('work_view_map')}</button>
-                                    <button type="button" onClick={() => setTableView('list')} className={`px-3 py-1 text-xs rounded-full transition ${tableView === 'list' ? 'bg-[var(--accent-color)] text-white' : 'text-white/70'}`}>{t('work_view_list')}</button>
+                                    <button type="button" onClick={() => setTableView('map')} className={`px-3 py-1 text-xs rounded-full transition active:scale-95 ${tableView === 'map' ? 'bg-[var(--accent-color)] text-white' : 'text-white/70'}`}>{t('work_view_map')}</button>
+                                    <button type="button" onClick={() => setTableView('list')} className={`px-3 py-1 text-xs rounded-full transition active:scale-95 ${tableView === 'list' ? 'bg-[var(--accent-color)] text-white' : 'text-white/70'}`}>{t('work_view_list')}</button>
                                 </div>
                             </div>
 
@@ -296,7 +295,7 @@ const PlanPage: React.FC = () => {
                                         onClick={() => setIsTableListVisible(!isTableListVisible)}
                                         className={`${formInputStyle} text-left flex justify-between items-center`}
                                     >
-                                        <span>{table || t('work_select_table')}</span>
+                                        <span className="text-base font-normal">{table || t('work_select_table')}</span>
                                         <svg className={`w-5 h-5 transition-transform ${isTableListVisible ? 'rotate-180' : ''}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                                     </button>
                                     {isTableListVisible && (
@@ -320,12 +319,12 @@ const PlanPage: React.FC = () => {
                                                             setIsTableListVisible(false);
                                                             setTableSearch('');
                                                         }}
-                                                        className="px-4 py-2 hover:bg-white/10 cursor-pointer"
+                                                        className="px-4 py-2 hover:bg-white/10 cursor-pointer text-base font-normal"
                                                     >
                                                         {t_val} {completedTables.has(t_val) ? <span className="text-xs text-[var(--accent-color-light)] ml-2">({t('stats_completed')})</span> : ''}
                                                     </li>
                                                 ))}
-                                                {filteredTables.length === 0 && <li className="px-4 py-2 text-white/50">{t('work_no_tables_found')}</li>}
+                                                {filteredTables.length === 0 && <li className="px-4 py-2 text-white/40 text-sm">{t('work_no_tables_found')}</li>}
                                             </ul>
                                         </div>
                                     )}
@@ -341,7 +340,7 @@ const PlanPage: React.FC = () => {
                             </div>
                         </>
                     )}
-                    <div className="pt-2 space-y-3">
+                    <div className="pt-2 space-y-4">
                         <button type="submit" className={primaryButtonStyle}>{t('work_save_button')}</button>
                         <button type="button" onClick={handleBack} className={secondaryButtonStyle}>{t('work_back_button')}</button>
                     </div>
@@ -351,15 +350,15 @@ const PlanPage: React.FC = () => {
     }
     
     return (
-        <div className="h-full w-full flex flex-col overflow-y-auto p-4">
+        <div className="h-full w-full flex flex-col overflow-y-auto p-4 space-y-6">
             {step === 'project' && (
                 <div className="space-y-4">
-                    <h2 className="text-xl font-bold text-center text-white">{t('work_step1_title')}</h2>
+                    <h2 className="text-2xl font-bold text-center text-white">{t('work_step1_title')}</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {projects.map(p => (
                             <div key={p.id} onClick={() => handleProjectSelect(p)} className={cardButtonStyle}>
                                 <h3 className="text-2xl font-bold text-white">{p.name}</h3>
-                                <p className="text-white/60 capitalize">{p.status}</p>
+                                <p className="text-white/70 capitalize text-sm">{p.status}</p>
                             </div>
                         ))}
                     </div>
@@ -368,8 +367,8 @@ const PlanPage: React.FC = () => {
 
             {step === 'type' && (
                  <div className="space-y-4">
-                    <h2 className="text-xl font-bold text-center text-white">{t('work_step2_title')}</h2>
-                    <h3 className="text-center text-white/70 -mt-2 mb-4">{t('stats_select_project_label')} <span className="font-semibold text-white">{selectedProject?.name}</span></h3>
+                    <h2 className="text-2xl font-bold text-center text-white">{t('work_step2_title')}</h2>
+                    <h3 className="text-center text-white/70 -mt-2 mb-4 text-base font-normal">{t('stats_select_project_label')} <span className="font-semibold text-white">{selectedProject?.name}</span></h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div onClick={() => handleWorkTypeSelect('hourly')} className={cardButtonStyle}>
                             <h3 className="text-2xl font-bold text-white">{t('work_type_hourly')}</h3>
@@ -384,17 +383,17 @@ const PlanPage: React.FC = () => {
             
             {step === 'task_subtype' && (
                 <div className="space-y-4">
-                    <h2 className="text-xl font-bold text-center text-white">{t('work_step3_title')}</h2>
-                    <h3 className="text-center text-white/70 -mt-2 mb-4">{t('stats_select_project_label')} <span className="font-semibold text-white">{selectedProject?.name}</span></h3>
+                    <h2 className="text-2xl font-bold text-center text-white">{t('work_step3_title')}</h2>
+                    <h3 className="text-center text-white/70 -mt-2 mb-4 text-base font-normal">{t('stats_select_project_label')} <span className="font-semibold text-white">{selectedProject?.name}</span></h3>
                     <div className="grid grid-cols-1 gap-4">
                         <div onClick={() => handleTaskSubTypeSelect('paneling')} className={cardButtonStyle}>
-                            <h3 className="text-2xl font-bold text-white">{t('work_task_paneling')}</h3>
+                            <h3 className="text-xl font-bold text-white">{t('work_task_paneling')}</h3>
                         </div>
                         <div onClick={() => handleTaskSubTypeSelect('construction')} className={cardButtonStyle}>
-                            <h3 className="text-2xl font-bold text-white">{t('work_task_construction')}</h3>
+                            <h3 className="text-xl font-bold text-white">{t('work_task_construction')}</h3>
                         </div>
                          <div onClick={() => handleTaskSubTypeSelect('cables')} className={`${cardButtonStyle} ${(!selectedProject?.tables || selectedProject.tables.length === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                            <h3 className="text-2xl font-bold text-white">{t('work_task_cables')}</h3>
+                            <h3 className="text-xl font-bold text-white">{t('work_task_cables')}</h3>
                         </div>
                     </div>
                      <button onClick={handleBack} className={`${secondaryButtonStyle} mt-4`}>{t('work_back_button')}</button>

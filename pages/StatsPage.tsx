@@ -6,10 +6,10 @@ import { useTheme } from '../context/ThemeContext';
 import { WorkEntry, CablesWorkEntry } from '../types';
 
 const StatCard: React.FC<{title: string; value: string | number; subValue?: string, className?: string}> = ({title, value, subValue, className}) => (
-    <div className={`floating-card p-4 text-center ${className}`}>
-        <p className="text-white/70 text-sm font-medium">{title}</p>
-        <p className="text-3xl font-bold text-white tracking-tight">{value}</p>
-        {subValue && <p className="text-xs text-white/50">{subValue}</p>}
+    <div className={`floating-card p-5 text-center ${className}`}>
+        <p className="text-white/70 text-sm font-normal">{title}</p>
+        <p className="text-2xl font-bold text-white tracking-tight mt-1">{value}</p>
+        {subValue && <p className="text-xs text-white/40">{subValue}</p>}
     </div>
 )
 
@@ -86,7 +86,6 @@ const StatsPage: React.FC = () => {
 
       const firstDay = new Date(Math.min(...cableTasks.map(e => new Date(e.date).getTime())));
       const today = new Date();
-      // Use unique days worked for more accurate rate
       const uniqueDaysWorked = new Set(cableTasks.map(e => new Date(e.date).setHours(0,0,0,0))).size;
       
       if (uniqueDaysWorked === 0) return { tablesPerDay: 0, remainingDays: Infinity, completionDate: null };
@@ -128,8 +127,8 @@ const StatsPage: React.FC = () => {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="glassmorphism p-3 rounded-lg text-sm border border-white/20">
-          <p className="label font-bold text-white">{`${label}`}</p>
+        <div className="floating-card p-3 text-sm border border-white/20">
+          <p className="label font-semibold text-white">{`${label}`}</p>
           <p className="intro" style={{color: accentColorLight}}>{`${t('stats_tooltip_total')} : €${payload[0].value}`}</p>
         </div>
       );
@@ -137,11 +136,11 @@ const StatsPage: React.FC = () => {
     return null;
   };
   
-  const formInputStyle = "w-full bg-white/10 text-white p-3 rounded-xl border border-white/20 placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] focus:border-[var(--accent-color)] transition";
+  const formInputStyle = "w-full bg-white/10 text-white p-3 rounded-xl border border-white/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] focus:border-[var(--accent-color)] transition text-base font-normal";
 
   return (
-    <div className="h-full w-full p-4 overflow-y-auto space-y-4">
-      <div className="floating-card p-4">
+    <div className="h-full w-full p-4 overflow-y-auto space-y-6">
+      <div className="floating-card p-5">
           <label className="block mb-2 text-sm font-medium text-white/70">{t('stats_select_project_label')}</label>
           <select value={selectedProjectId} onChange={e => setSelectedProjectId(e.target.value)} className={formInputStyle}>
               {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -149,18 +148,18 @@ const StatsPage: React.FC = () => {
       </div>
 
       {projectForecast && projectForecast.completionDate && (
-          <div className="floating-card p-6 text-center">
-            <h2 className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] uppercase tracking-wider mb-2">{t('stats_forecast_title')}</h2>
-            <p className="text-white/70 text-sm">{t('stats_forecast_completion_date')}</p>
-            <p className="text-4xl font-black text-white my-1">{projectForecast.completionDate.toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric'})}</p>
+          <div className="floating-card p-5 text-center">
+            <h2 className="text-base font-semibold text-transparent bg-clip-text bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] uppercase tracking-wider mb-2">{t('stats_forecast_title')}</h2>
+            <p className="text-white/70 text-sm font-normal">{t('stats_forecast_completion_date')}</p>
+            <p className="text-3xl font-bold text-white my-1">{projectForecast.completionDate.toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric'})}</p>
             <div className="flex justify-center items-center gap-6 mt-3 text-white">
                 <div>
-                    <span className="font-bold text-xl">{projectForecast.remainingDays}</span>
-                    <span className="text-sm ml-1 text-white/70">{t('stats_forecast_remaining_days')}</span>
+                    <span className="font-semibold text-xl">{projectForecast.remainingDays}</span>
+                    <span className="text-sm ml-1 text-white/70 font-normal">{t('stats_forecast_remaining_days')}</span>
                 </div>
                  <div>
-                    <span className="font-bold text-xl">{projectForecast.tablesPerDay}</span>
-                    <span className="text-sm ml-1 text-white/70">{t('stats_forecast_rate')}</span>
+                    <span className="font-semibold text-xl">{projectForecast.tablesPerDay}</span>
+                    <span className="text-sm ml-1 text-white/70 font-normal">{t('stats_forecast_rate')}</span>
                 </div>
             </div>
           </div>
@@ -175,13 +174,13 @@ const StatsPage: React.FC = () => {
           </div>
       )}
 
-      <div className="floating-card p-4">
+      <div className="floating-card p-5">
         <h2 className="text-xl font-bold mb-4 text-center text-white">{t('stats_earnings_by_worker_title')}</h2>
         <div style={{ width: '100%', height: 300 }}>
           <ResponsiveContainer>
             <BarChart data={workerEarnings} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-              <XAxis dataKey="name" stroke="rgba(255, 255, 255, 0.5)" fontSize={12} />
-              <YAxis stroke="rgba(255, 255, 255, 0.5)" fontSize={12} />
+              <XAxis dataKey="name" stroke="rgba(255, 255, 255, 0.4)" fontSize={12} />
+              <YAxis stroke="rgba(255, 255, 255, 0.4)" fontSize={12} />
               <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgba(255, 255, 255, 0.1)'}} />
               <Bar dataKey="total" name={t('stats_tooltip_total')} fill="url(#colorTotal)" />
               <defs>

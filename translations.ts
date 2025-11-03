@@ -1,4 +1,3 @@
-
 export const ZARASAI_STOLY = [
 "1","1.1","2","2.1","3","3.1","4","4.1","5","5.1","6","6.1","7","7.1","8","8.1","9","9.1","10","10.1","11","11.1","12","12.1",
 "13","13.1","14","14.1","15","15.1","16","16.1","17","17.1","18","18.1","19","19.1","20","20.1","21","21.1","22","22.1","23","23.1",
@@ -90,6 +89,7 @@ const en = {
   records_edit_entry_title: "Edit Entry",
   records_filter_by_worker: "Filter by Worker",
   records_all_workers: "All Workers",
+  records_loading: "Loading records...",
   
   // Stats Page
   stats_select_project_label: "Statistics for project:",
@@ -127,10 +127,10 @@ const en = {
   settings_generate_report_button: "Generate & Copy Daily Report",
   settings_language_title: "Language",
   settings_theme_title: "Application Theme",
-  settings_theme_default: "Raspberry",
-  settings_theme_oceanic: "Oceanic",
-  settings_theme_sunset: "Sunset",
+  settings_theme_dusk: "Dusk",
+  settings_theme_slate: "Slate",
   settings_theme_forest: "Forest",
+  settings_theme_crimson: "Crimson",
   settings_data_management_title: "Data Management",
   settings_export_data_button: "Export Data",
   settings_import_data_button: "Import & Merge Data",
@@ -233,6 +233,7 @@ export const translations = {
     records_edit_entry_title: "Upravit záznam",
     records_filter_by_worker: "Filtrovat podle pracovníka",
     records_all_workers: "Všichni pracovníci",
+    records_loading: "Načítání záznamů...",
     
     // Stats Page
     stats_select_project_label: "Statistiky pro projekt:",
@@ -270,10 +271,10 @@ export const translations = {
     settings_generate_report_button: "Generovat a kopírovat denní report",
     settings_language_title: "Jazyk",
     settings_theme_title: "Vzhled aplikace",
-    settings_theme_default: "Malina",
-    settings_theme_oceanic: "Oceán",
-    settings_theme_sunset: "Západ slunce",
+    settings_theme_dusk: "Soumrak",
+    settings_theme_slate: "Břidlice",
     settings_theme_forest: "Les",
+    settings_theme_crimson: "Karmín",
     settings_data_management_title: "Správa dat",
     settings_export_data_button: "Exportovat data",
     settings_import_data_button: "Importovat a sloučit data",

@@ -1,15 +1,13 @@
-
 import React from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
 import { useTheme } from '../context/ThemeContext';
 import { Theme, ProjectStatus, Project } from '../types';
 import type { Locale } from '../translations';
-import { ZARASAI_STOLY } from '../translations';
 
 const SettingsCard: React.FC<{title: string, children: React.ReactNode}> = ({title, children}) => (
-    <div className="floating-card p-4">
-        <h2 className="text-xl font-bold mb-3 text-white">{title}</h2>
+    <div className="floating-card p-5">
+        <h2 className="text-xl font-bold mb-4 text-white">{title}</h2>
         {children}
     </div>
 );
@@ -23,15 +21,15 @@ const SettingsPage: React.FC = () => {
   const { t, locale, setLocale } = useI18n();
   const { theme, setTheme } = useTheme();
 
-  const formInputStyle = "w-full bg-white/10 text-white p-3 rounded-xl border border-white/20 placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] focus:border-[var(--accent-color)] transition";
+  const formInputStyle = "w-full bg-white/10 text-white p-3 rounded-xl border border-white/20 placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] focus:border-[var(--accent-color)] transition text-base font-normal";
   const formLabelStyle = "block mb-2 text-sm font-medium text-white/70";
-  const primaryButtonStyle = "w-full bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition duration-200 transform hover:scale-105 active:scale-100 shadow-lg";
+  const primaryButtonStyle = "w-full bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition duration-200 ease-in-out transform hover:scale-105 active:scale-95 shadow-lg";
   
   const themes: { id: Theme, name: string, colors: [string, string] }[] = [
-      { id: 'default', name: t('settings_theme_default'), colors: ['#FF61A6', '#a855f7'] },
-      { id: 'oceanic', name: t('settings_theme_oceanic'), colors: ['#00C9FF', '#0ea5e9'] },
-      { id: 'sunset', name: t('settings_theme_sunset'), colors: ['#f97316', '#f59e0b'] },
-      { id: 'forest', name: t('settings_theme_forest'), colors: ['#4ade80', '#16a34a'] }
+      { id: 'dusk', name: t('settings_theme_dusk'), colors: ['#d946ef', '#6366f1'] },
+      { id: 'slate', name: t('settings_theme_slate'), colors: ['#f59e0b', '#facc15'] },
+      { id: 'forest', name: t('settings_theme_forest'), colors: ['#4ade80', '#16a34a'] },
+      { id: 'crimson', name: t('settings_theme_crimson'), colors: ['#f97316', '#dc2626'] }
   ];
 
   const handleAddProject = (e: React.FormEvent<HTMLFormElement>) => {
@@ -135,16 +133,16 @@ const SettingsPage: React.FC = () => {
   };
 
   return (
-    <div className="h-full w-full p-4 overflow-y-auto space-y-4">
+    <div className="h-full w-full p-4 overflow-y-auto space-y-6">
       <SettingsCard title={t('settings_theme_title')}>
         <div className="grid grid-cols-2 gap-4">
             {themes.map(item => (
                 <button
                     key={item.id}
                     onClick={() => setTheme(item.id)}
-                    className={`p-2 rounded-lg border-2 transition-all ${theme === item.id ? 'border-[var(--accent-color)] shadow-lg' : 'border-transparent hover:border-white/20'}`}
+                    className={`p-2 rounded-xl border-2 transition-all duration-200 ease-in-out active:scale-95 ${theme === item.id ? 'border-[var(--accent-color)] shadow-lg' : 'border-transparent hover:border-white/20'}`}
                 >
-                    <div className="w-full h-10 rounded-md" style={{ background: `linear-gradient(to right, ${item.colors[0]}, ${item.colors[1]})` }}></div>
+                    <div className="w-full h-10 rounded-lg" style={{ background: `linear-gradient(to right, ${item.colors[0]}, ${item.colors[1]})` }}></div>
                     <p className="mt-2 text-center text-sm font-medium">{item.name}</p>
                 </button>
             ))}
@@ -184,11 +182,11 @@ const SettingsPage: React.FC = () => {
             {projects.map(p => (
                 <div key={p.id} className="bg-white/5 p-3 rounded-lg flex justify-between items-center">
                     <div>
-                        <span className="font-medium">{p.name}</span>
+                        <span className="font-semibold text-base">{p.name}</span>
                         <span className="ml-2 text-xs bg-white/10 text-white/70 px-2 py-1 rounded-full capitalize">{p.status}</span>
                     </div>
                     {p.id !== 'zarasai_predefined' && (
-                        <button onClick={() => deleteProject(p.id)} className="text-white/50 hover:text-red-500 font-bold text-xl px-2">&times;</button>
+                        <button onClick={() => deleteProject(p.id)} className="text-white/40 hover:text-red-500 font-bold text-xl px-2 transition active:scale-90">&times;</button>
                     )}
                 </div>
             ))}
@@ -204,8 +202,8 @@ const SettingsPage: React.FC = () => {
         <div className="space-y-2 max-h-48 overflow-y-auto">
             {workers.map(w => (
                 <div key={w.id} className="bg-white/5 p-3 rounded-lg flex justify-between items-center">
-                    <span className="font-medium">{w.name} (€{w.rate}/hr)</span>
-                    <button onClick={() => deleteWorker(w.id)} className="text-white/50 hover:text-red-500 font-bold text-xl px-2">&times;</button>
+                    <span className="font-semibold text-base">{w.name} (€{w.rate}/hr)</span>
+                    <button onClick={() => deleteWorker(w.id)} className="text-white/40 hover:text-red-500 font-bold text-xl px-2 transition active:scale-90">&times;</button>
                 </div>
             ))}
         </div>
@@ -213,12 +211,12 @@ const SettingsPage: React.FC = () => {
       
       <SettingsCard title={t('settings_data_management_title')}>
         <div className="space-y-4">
-            <button onClick={handleExportData} className="w-full bg-gradient-to-r from-sky-500 to-indigo-500 hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition transform hover:scale-105 active:scale-100 shadow-lg">
+            <button onClick={handleExportData} className="w-full bg-gradient-to-r from-sky-500 to-indigo-500 hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition transform hover:scale-105 active:scale-95 shadow-lg">
                 {t('settings_export_data_button')}
             </button>
             <div>
               <input type="file" id="importFile" accept="application/json" className="hidden" onChange={handleImportData} />
-              <label htmlFor="importFile" className="w-full block text-center bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition transform hover:scale-105 active:scale-100 shadow-lg cursor-pointer">
+              <label htmlFor="importFile" className="w-full block text-center bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition transform hover:scale-105 active:scale-95 shadow-lg cursor-pointer">
                   {t('settings_import_data_button')}
               </label>
             </div>
@@ -226,7 +224,7 @@ const SettingsPage: React.FC = () => {
       </SettingsCard>
 
       <SettingsCard title={t('settings_actions_title')}>
-        <button onClick={generateDailyReport} className="w-full bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white font-bold py-3 px-4 rounded-xl transition transform hover:scale-105 active:scale-100 shadow-lg">{t('settings_generate_report_button')}</button>
+        <button onClick={generateDailyReport} className="w-full bg-gradient-to-r from-green-500 to-teal-500 hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition transform hover:scale-105 active:scale-95 shadow-lg">{t('settings_generate_report_button')}</button>
       </SettingsCard>
     </div>
   );

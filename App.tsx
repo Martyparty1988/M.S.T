@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { AppProvider, useAppContext } from './context/AppContext';
 import { I18nProvider, useI18n } from './context/I18nContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -9,10 +9,30 @@ import SettingsPage from './pages/SettingsPage';
 import BottomNav from './components/BottomNav';
 import Loader from './components/Loader';
 import Toast from './components/Toast';
+import { Page } from './types';
+
+const pageOrder: Page[] = ['plan', 'records', 'stats', 'settings'];
 
 const AppContent: React.FC = () => {
   const { page, loading, toast } = useAppContext();
   const { t } = useI18n();
+  const [animationClass, setAnimationClass] = useState('');
+  const prevPageIndexRef = useRef(pageOrder.indexOf(page));
+
+  useEffect(() => {
+    const currentPageIndex = pageOrder.indexOf(page);
+    const prevPageIndex = prevPageIndexRef.current;
+
+    if (currentPageIndex !== prevPageIndex) {
+      if (currentPageIndex > prevPageIndex) {
+        setAnimationClass('slide-in-right');
+      } else {
+        setAnimationClass('slide-in-left');
+      }
+    }
+    prevPageIndexRef.current = currentPageIndex;
+  }, [page]);
+
 
   const renderPage = () => {
     switch (page) {
@@ -30,17 +50,17 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="h-full w-full flex flex-col antialiased font-sans text-gray-100">
+    <div className="h-full w-full flex flex-col antialiased font-sans text-white">
       <header 
-        className="text-center z-10 p-3 floating-card mx-4 mt-4"
-        style={{ paddingTop: `calc(0.75rem + var(--safe-area-inset-top))` }}
+        className="text-center z-10 p-5 floating-card mx-4 mt-4"
+        style={{ paddingTop: `calc(20px + var(--safe-area-inset-top))`, borderRadius: 'var(--card-border-radius)' }}
       >
-        <h1 className="text-2xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)]">
+        <h1 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)]">
           {t('app_title')}
         </h1>
       </header>
 
-      <main className="flex-grow overflow-hidden relative">
+      <main className={`flex-grow overflow-hidden relative ${animationClass}`}>
         {renderPage()}
       </main>
       
