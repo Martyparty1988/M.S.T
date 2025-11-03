@@ -1,4 +1,4 @@
-export type Page = 'plan' | 'attendance' | 'records' | 'payroll' | 'settings';
+export type Page = 'plan' | 'attendance' | 'records' | 'payroll' | 'stats' | 'settings';
 export type Theme = 'dusk' | 'slate' | 'forest' | 'crimson';
 
 export interface Worker {

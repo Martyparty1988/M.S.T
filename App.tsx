@@ -6,13 +6,14 @@ import PlanPage from './pages/PlanPage';
 import AttendancePage from './pages/AttendancePage';
 import RecordsPage from './pages/RecordsPage';
 import PayrollPage from './pages/PayrollPage';
+import StatsPage from './pages/StatsPage';
 import SettingsPage from './pages/SettingsPage';
 import BottomNav from './components/BottomNav';
 import Loader from './components/Loader';
 import Toast from './components/Toast';
 import { Page } from './types';
 
-const pageOrder: Page[] = ['plan', 'attendance', 'records', 'payroll', 'settings'];
+const pageOrder: Page[] = ['plan', 'attendance', 'records', 'payroll', 'stats', 'settings'];
 
 const AppContent: React.FC = () => {
   const { page, loading, toast } = useAppContext();
@@ -45,6 +46,8 @@ const AppContent: React.FC = () => {
         return <RecordsPage />;
       case 'payroll':
         return <PayrollPage />;
+      case 'stats':
+        return <StatsPage />;
       case 'settings':
         return <SettingsPage />;
       default:

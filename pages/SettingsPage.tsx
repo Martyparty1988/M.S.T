@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
 import { useTheme } from '../context/ThemeContext';
-import { Theme, ProjectStatus, Project, Worker } from '../types';
+import { Theme, ProjectStatus, Project, Worker, CablesWorkEntry, PanelingWorkEntry, HourlyWorkEntry } from '../types';
 import type { Locale } from '../translations';
 import ManageTeamModal from '../components/ManageTeamModal';
 import EditWorkerModal from '../components/EditWorkerModal';
@@ -99,14 +99,58 @@ const SettingsPage: React.FC = () => {
         return;
     }
     
-    let report = `${t('report_title')} ${today.toLocaleDateString()}:\n\n`;
-    todaysEntries.forEach(entry => {
-        const workerNames = entry.workerIds.map(id => workers.find(w=>w.id === id)?.name).join(', ');
-        const projectName = projects.find(p => p.id === entry.projectId)?.name;
-        report += `Project: ${projectName}, Workers: ${workerNames}, Duration: ${entry.duration.toFixed(2)}h\n`;
+    let totalStrings = 0;
+    const cableEntries = todaysEntries.filter(
+        (e): e is CablesWorkEntry => e.type === 'task' && e.subType === 'cables'
+    );
+
+    cableEntries.forEach(entry => {
+        switch (entry.tableSize) {
+            case 'small':
+                totalStrings += 1;
+                break;
+            case 'medium':
+                totalStrings += 1.5;
+                break;
+            case 'large':
+                totalStrings += 2;
+                break;
+        }
     });
+
+    const summaryMessage = `Today we have made ${totalStrings} strings.`;
     
-    navigator.clipboard.writeText(report).then(() => {
+    let report = `${t('report_title')} ${today.toLocaleDateString(locale, { year: 'numeric', month: 'long', day: 'numeric'})}:\n\n`;
+
+    todaysEntries.forEach(entry => {
+        const workerNames = entry.workerIds.map(id => workers.find(w=>w.id === id)?.name || t('records_unknown_worker')).join(', ');
+        const projectName = projects.find(p => p.id === entry.projectId)?.name || t('records_unknown_project');
+        
+        let detail = '';
+        switch(entry.type) {
+            case 'hourly':
+                detail = `${t('records_entry_type_hourly')} - ${(entry as HourlyWorkEntry).description || ''}`;
+                break;
+            case 'task':
+                switch(entry.subType) {
+                    case 'paneling':
+                        detail = `${t('records_entry_type_paneling')} - ${(entry as PanelingWorkEntry).moduleCount} ${t('records_modules_label')}`;
+                        break;
+                    case 'construction':
+                        detail = `${t('records_entry_type_construction')} - ${entry.description}`;
+                        break;
+                    case 'cables':
+                        detail = `${t('records_entry_type_cables')} - ${t('records_table_label')} ${entry.table}`;
+                        break;
+                }
+                break;
+        }
+        report += `[${projectName}] ${workerNames}: ${detail} (${entry.duration.toFixed(2)}h)\n`;
+    });
+
+    const finalReport = `${summaryMessage}\n\n${report}`;
+    
+    navigator.clipboard.writeText(finalReport).then(() => {
         showToast(t("toast_report_copied"));
     }, () => {
         showToast(t("toast_report_copy_failed"));

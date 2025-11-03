@@ -31,7 +31,8 @@ const en = {
   nav_plan: "Dashboard",
   nav_attendance: "Attendance",
   nav_records: "Records",
-  nav_payroll: "Payroll & Stats",
+  nav_payroll: "Payroll",
+  nav_stats: "Stats",
   nav_settings: "Settings",
 
   // Dashboard (Plan Page)
@@ -152,6 +153,19 @@ const en = {
   payroll_earnings_comparison_chart_title: "Earnings Comparison",
   payroll_earnings_breakdown_chart_title: "Earnings Breakdown",
 
+  // Stats Page
+  stats_page_title: "Statistics & Charts",
+  stats_project_summary: "Project Summary",
+  stats_project_velocity: "Project Velocity",
+  stats_tables_per_day: "Tables / Day",
+  stats_worker_performance: "Worker Performance",
+  stats_avg_earnings_per_hour: "Avg. € / Hour",
+  stats_not_enough_data: "Not enough data to show statistics.",
+  stats_tables_completed_over_time: "Tables Completed Over Time",
+  stats_total_tables_completed: "Tables Completed",
+  stats_total_man_hours: "Total Man-Hours Logged",
+  stats_total_cost: "Total Cost to Date",
+  
   // Settings Page
   settings_project_management_title: "Project Management",
   settings_project_name_placeholder: "New Project Name",
@@ -246,7 +260,8 @@ export const translations = {
     nav_plan: "Nástěnka",
     nav_attendance: "Docházka",
     nav_records: "Záznamy",
-    nav_payroll: "Mzdy a statistiky",
+    nav_payroll: "Mzdy",
+    nav_stats: "Statistiky",
     nav_settings: "Nastavení",
 
     // Dashboard (Plan Page)
@@ -367,6 +382,19 @@ export const translations = {
     payroll_earnings_comparison_chart_title: "Srovnání výdělků",
     payroll_earnings_breakdown_chart_title: "Rozpad výdělků",
 
+    // Stats Page
+    stats_page_title: "Statistiky a grafy",
+    stats_project_summary: "Souhrn projektu",
+    stats_project_velocity: "Rychlost projektu",
+    stats_tables_per_day: "Stoly / den",
+    stats_worker_performance: "Výkonnost pracovníků",
+    stats_avg_earnings_per_hour: "Prům. € / hodina",
+    stats_not_enough_data: "Nedostatek dat pro zobrazení statistik.",
+    stats_tables_completed_over_time: "Dokončené stoly v čase",
+    stats_total_tables_completed: "Dokončené stoly",
+    stats_total_man_hours: "Celkem člověkohodin",
+    stats_total_cost: "Celkové náklady k datu",
+
     // Settings Page
     settings_project_management_title: "Správa projektů",
     settings_project_name_placeholder: "Název nového projektu",
@@ -459,7 +487,8 @@ export const translations = {
     nav_plan: "Prietaisų skydelis",
     nav_attendance: "Lankomumas",
     nav_records: "Įrašai",
-    nav_payroll: "Atlyginimai ir statistika",
+    nav_payroll: "Atlyginimai",
+    nav_stats: "Statistika",
     nav_settings: "Nustatymai",
     work_step1_title: "1 veiksmas: Pasirinkite projektą",
     work_add_new_project: "Naujas projektas",
@@ -497,6 +526,17 @@ export const translations = {
     error_max_two_workers: "Galite pasirinkti ne daugiau kaip du darbuotojus.",
     quick_log_save_button: "Registruoti {0} stalus",
     quick_log_table_sizes_label: "Pasirinktų stalų dydžiai",
+    stats_page_title: "Statistika ir diagramos",
+    stats_project_summary: "Projekto suvestinė",
+    stats_project_velocity: "Projekto greitis",
+    stats_tables_per_day: "Stalai / diena",
+    stats_worker_performance: "Darbuotojų našumas",
+    stats_avg_earnings_per_hour: "Vid. € / val.",
+    stats_not_enough_data: "Nepakanka duomenų statistikai rodyti.",
+    stats_tables_completed_over_time: "Užbaigti stalai laikui bėgant",
+    stats_total_tables_completed: "Užbaigti stalai",
+    stats_total_man_hours: "Iš viso darbo valandų",
+    stats_total_cost: "Bendra kaina iki šiol",
   }
 };
 
