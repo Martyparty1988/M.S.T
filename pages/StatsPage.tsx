@@ -3,51 +3,42 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, PieC
 import { useAppContext } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
 import { useTheme } from '../context/ThemeContext';
-import { WorkEntry } from '../types';
+import { WorkEntry, CablesWorkEntry } from '../types';
 
-const StatCard: React.FC<{title: string; value: string | number; subValue?: string}> = ({title, value, subValue}) => (
-    <div className="glassmorphism p-4 rounded-xl border border-white/20 text-center">
+const StatCard: React.FC<{title: string; value: string | number; subValue?: string, className?: string}> = ({title, value, subValue, className}) => (
+    <div className={`floating-card p-4 text-center ${className}`}>
         <p className="text-white/70 text-sm font-medium">{title}</p>
-        <p className="text-2xl font-bold text-white tracking-tight">{value}</p>
+        <p className="text-3xl font-bold text-white tracking-tight">{value}</p>
         {subValue && <p className="text-xs text-white/50">{subValue}</p>}
     </div>
 )
 
 const StatsPage: React.FC = () => {
   const { workEntries, workers, projects } = useAppContext();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { theme } = useTheme();
 
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
-  const [chartColors, setChartColors] = useState<string[]>([]);
-  const [gradientStart, setGradientStart] = useState('');
-  const [gradientMiddle, setGradientMiddle] = useState('');
   const [accentColorLight, setAccentColorLight] = useState('');
   const [gradientEnd, setGradientEnd] = useState('');
+  const [gradientMiddle, setGradientMiddle] = useState('');
   
   useEffect(() => {
-      if (projects.length > 0) {
+      if (projects.length > 0 && !selectedProjectId) {
           setSelectedProjectId(projects[0].id);
       }
-  }, [projects]);
+  }, [projects, selectedProjectId]);
 
   useEffect(() => {
     const styles = getComputedStyle(document.body);
     const gradientEndValue = styles.getPropertyValue('--gradient-end').trim();
-    setChartColors([
-      gradientEndValue,
-      styles.getPropertyValue('--gradient-start').trim(),
-      '#f97316', 
-      '#14b8a6', 
-      '#f59e0b'
-    ]);
-    setGradientStart(styles.getPropertyValue('--gradient-start').trim());
-    setGradientMiddle(styles.getPropertyValue('--gradient-middle').trim());
     setGradientEnd(gradientEndValue);
+    setGradientMiddle(styles.getPropertyValue('--gradient-middle').trim());
     setAccentColorLight(styles.getPropertyValue('--accent-color-light').trim());
   }, [theme]);
 
   const projectEntries = useMemo(() => {
+    if (!selectedProjectId) return [];
     return workEntries.filter(e => e.projectId === selectedProjectId);
   }, [workEntries, selectedProjectId]);
 
@@ -59,11 +50,11 @@ const StatsPage: React.FC = () => {
       if (!selectedProject) return null;
 
       const cableTasks = projectEntries.filter(e => e.type === 'task' && e.subType === 'cables');
-      const completedTables = new Set(cableTasks.map(e => e.table));
+      const completedTables = new Set(cableTasks.map(e => (e as CablesWorkEntry).table));
       const totalTables = selectedProject.tables.length;
       
       const panelingTasks = projectEntries.filter(e => e.type === 'task' && e.subType === 'paneling');
-      const totalModules = panelingTasks.reduce((sum, e) => sum + e.moduleCount, 0);
+      const totalModules = panelingTasks.reduce((sum, e) => sum + (e as any).moduleCount, 0);
       const totalPanelingHours = panelingTasks.reduce((sum, e) => sum + e.duration, 0);
 
       const workerCounts: {[id: string]: number} = {};
@@ -82,23 +73,48 @@ const StatsPage: React.FC = () => {
           hourlyCount: projectEntries.filter(e => e.type === 'hourly').length,
           panelingCount: panelingTasks.length,
           avgModulesPerHour: totalPanelingHours > 0 ? (totalModules / totalPanelingHours).toFixed(1) : 0,
-          topWorker: topWorker ? `${topWorker.name} (${workerCounts[topWorkerId]} ${t('stats_total_work_entries')})` : 'N/A'
+          topWorkerName: topWorker ? topWorker.name : 'N/A',
+          topWorkerCount: topWorker ? `${workerCounts[topWorkerId]} ${t('stats_total_work_entries')}` : ''
       };
   }, [projectEntries, selectedProject, workers, t]);
+
+  const projectForecast = useMemo(() => {
+      if (!projectStats || projectStats.totalTables === 0) return null;
+      
+      const cableTasks = projectEntries.filter(e => e.type === 'task' && e.subType === 'cables') as CablesWorkEntry[];
+      if (cableTasks.length === 0) return { tablesPerDay: 0, remainingDays: Infinity, completionDate: null };
+
+      const firstDay = new Date(Math.min(...cableTasks.map(e => new Date(e.date).getTime())));
+      const today = new Date();
+      // Use unique days worked for more accurate rate
+      const uniqueDaysWorked = new Set(cableTasks.map(e => new Date(e.date).setHours(0,0,0,0))).size;
+      
+      if (uniqueDaysWorked === 0) return { tablesPerDay: 0, remainingDays: Infinity, completionDate: null };
+      
+      const tablesPerDay = projectStats.completedTables / uniqueDaysWorked;
+      if (tablesPerDay === 0) return { tablesPerDay: 0, remainingDays: Infinity, completionDate: null };
+
+      const remainingDays = Math.ceil(projectStats.remainingTables / tablesPerDay);
+      const completionDate = new Date(today.setDate(today.getDate() + remainingDays));
+      
+      return {
+          tablesPerDay: parseFloat(tablesPerDay.toFixed(1)),
+          remainingDays,
+          completionDate: remainingDays === Infinity ? null : completionDate
+      };
+  }, [projectEntries, projectStats]);
 
   const workerEarnings = useMemo(() => {
     const earnings: { [key: string]: number } = {};
     workers.forEach(w => earnings[w.name] = 0);
 
     projectEntries.forEach(entry => {
-      const workerRate = workers.find(w => w.id === entry.workerIds[0])?.rate || 0; // Simplified for now
-      const amount = entry.duration * workerRate; // Simplified calculation for all entries
       
       entry.workerIds.forEach(id => {
-          const workerName = workers.find(w => w.id === id)?.name;
-          if (workerName) {
-            // Distribute amount among workers
-            earnings[workerName] += amount / entry.workerIds.length;
+          const worker = workers.find(w => w.id === id);
+          if (worker) {
+            const amount = entry.duration * worker.rate;
+            earnings[worker.name] += amount / entry.workerIds.length;
           }
       });
     });
@@ -121,30 +137,45 @@ const StatsPage: React.FC = () => {
     return null;
   };
   
-  const formInputStyle = "w-full bg-white/10 text-white p-3 rounded-lg border border-white/20 placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] focus:border-[var(--accent-color)] transition";
+  const formInputStyle = "w-full bg-white/10 text-white p-3 rounded-xl border border-white/20 placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] focus:border-[var(--accent-color)] transition";
 
   return (
     <div className="h-full w-full p-4 overflow-y-auto space-y-4">
-      <div className="glassmorphism p-4 rounded-xl border border-white/20 shadow-lg">
+      <div className="floating-card p-4">
           <label className="block mb-2 text-sm font-medium text-white/70">{t('stats_select_project_label')}</label>
           <select value={selectedProjectId} onChange={e => setSelectedProjectId(e.target.value)} className={formInputStyle}>
               {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
       </div>
 
-      {projectStats && selectedProject && (
-          <div className="glassmorphism p-4 rounded-xl border border-white/20 shadow-lg">
-              <h2 className="text-xl font-bold mb-4 text-center text-white">{t('stats_project_overview')}</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <StatCard title={t('stats_table_completion')} value={`${projectStats.completedTables} / ${projectStats.totalTables}`} subValue={`${projectStats.remainingTables} ${t('stats_remaining')}`} />
-                  <StatCard title={t('stats_work_distribution')} value={projectStats.panelingCount} subValue={`${t('work_task_paneling')} / ${projectStats.hourlyCount} ${t('work_type_hourly')}`} />
-                  <StatCard title={t('stats_paneling_performance')} value={projectStats.avgModulesPerHour} subValue={t('stats_avg_mods_per_hour')} />
-                  <StatCard title={t('stats_top_worker')} value={projectStats.topWorker?.split('(')[0] || ''} subValue={projectStats.topWorker?.split('(')[1]?.replace(')','')} />
-              </div>
+      {projectForecast && projectForecast.completionDate && (
+          <div className="floating-card p-6 text-center">
+            <h2 className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] uppercase tracking-wider mb-2">{t('stats_forecast_title')}</h2>
+            <p className="text-white/70 text-sm">{t('stats_forecast_completion_date')}</p>
+            <p className="text-4xl font-black text-white my-1">{projectForecast.completionDate.toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric'})}</p>
+            <div className="flex justify-center items-center gap-6 mt-3 text-white">
+                <div>
+                    <span className="font-bold text-xl">{projectForecast.remainingDays}</span>
+                    <span className="text-sm ml-1 text-white/70">{t('stats_forecast_remaining_days')}</span>
+                </div>
+                 <div>
+                    <span className="font-bold text-xl">{projectForecast.tablesPerDay}</span>
+                    <span className="text-sm ml-1 text-white/70">{t('stats_forecast_rate')}</span>
+                </div>
+            </div>
           </div>
       )}
 
-      <div className="glassmorphism p-4 rounded-xl border border-white/20 shadow-lg">
+      {projectStats && selectedProject && (
+          <div className="grid grid-cols-2 gap-4">
+              <StatCard title={t('stats_table_completion')} value={`${projectStats.completedTables} / ${projectStats.totalTables}`} subValue={`${projectStats.remainingTables} ${t('stats_remaining')}`} />
+              <StatCard title={t('stats_work_distribution')} value={projectStats.panelingCount} subValue={`${t('work_task_paneling')} / ${projectStats.hourlyCount} ${t('work_type_hourly')}`} />
+              <StatCard title={t('stats_paneling_performance')} value={projectStats.avgModulesPerHour} subValue={t('stats_avg_mods_per_hour')} />
+              <StatCard title={t('stats_top_worker')} value={projectStats.topWorkerName} subValue={projectStats.topWorkerCount} />
+          </div>
+      )}
+
+      <div className="floating-card p-4">
         <h2 className="text-xl font-bold mb-4 text-center text-white">{t('stats_earnings_by_worker_title')}</h2>
         <div style={{ width: '100%', height: 300 }}>
           <ResponsiveContainer>

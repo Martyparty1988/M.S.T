@@ -1,20 +1,24 @@
-import React, { useState, useMemo } from 'react';
+
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
-import { Project, Worker, WorkEntry, PanelingWorkEntry, ConstructionWorkEntry, CablesWorkEntry, HourlyWorkEntry, TableSize } from '../types';
+import { Project, WorkEntry, PanelingWorkEntry, ConstructionWorkEntry, CablesWorkEntry, HourlyWorkEntry, TableSize } from '../types';
+import TableMap from '../components/TableMap';
 
 type Step = 'project' | 'type' | 'task_subtype' | 'form';
 type WorkType = 'hourly' | 'task';
 type TaskSubType = 'paneling' | 'construction' | 'cables';
+type TableView = 'list' | 'map';
 
 const PlanPage: React.FC = () => {
-    const { projects, workers, addWorkEntry, showToast } = useAppContext();
+    const { projects, workers, workEntries, addWorkEntry, showToast } = useAppContext();
     const { t } = useI18n();
 
     const [step, setStep] = useState<Step>('project');
     const [selectedProject, setSelectedProject] = useState<Project | null>(null);
     const [selectedWorkType, setSelectedWorkType] = useState<WorkType | null>(null);
     const [selectedTaskSubType, setSelectedTaskSubType] = useState<TaskSubType | null>(null);
+    const [tableView, setTableView] = useState<TableView>('map');
 
     // Form state
     const [workerId1, setWorkerId1] = useState('');
@@ -25,12 +29,44 @@ const PlanPage: React.FC = () => {
     const [moduleCount, setModuleCount] = useState('');
     const [table, setTable] = useState('');
     const [tableSize, setTableSize] = useState<TableSize>('medium');
+    const [tableSearch, setTableSearch] = useState('');
+    const [isTableListVisible, setIsTableListVisible] = useState(false);
 
-    const formInputStyle = "w-full bg-white/10 text-white p-3 rounded-lg border border-white/20 placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] focus:border-[var(--accent-color)] transition";
+    const tableDropdownRef = useRef<HTMLDivElement>(null);
+
+    const formInputStyle = "w-full bg-white/10 text-white p-3 rounded-xl border border-white/20 placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] focus:border-[var(--accent-color)] transition";
     const formLabelStyle = "block mb-2 text-sm font-medium text-white/70";
-    const cardButtonStyle = "glassmorphism p-6 rounded-xl border border-white/20 shadow-lg text-center cursor-pointer hover:bg-white/20 hover:border-[var(--accent-color)] transition duration-300 transform hover:scale-105";
-    const primaryButtonStyle = "w-full bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg transition duration-200 transform hover:scale-105 shadow-lg disabled:opacity-50";
-    const secondaryButtonStyle = "w-full bg-white/10 hover:bg-white/20 text-white font-bold py-3 px-4 rounded-lg transition duration-200";
+    const cardButtonStyle = "floating-card p-6 text-center cursor-pointer hover:bg-white/10 transition duration-300 transform hover:scale-105 active:scale-100";
+    const primaryButtonStyle = "w-full bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition duration-200 transform hover:scale-105 active:scale-100 shadow-lg disabled:opacity-50";
+    const secondaryButtonStyle = "w-full bg-white/10 hover:bg-white/20 text-white font-bold py-3 px-4 rounded-xl transition duration-200";
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (tableDropdownRef.current && !tableDropdownRef.current.contains(event.target as Node)) {
+                setIsTableListVisible(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
+    const completedTables = useMemo(() => {
+        if (!selectedProject) return new Set();
+        return new Set(
+            workEntries
+                .filter(e => e.projectId === selectedProject.id && e.type === 'task' && e.subType === 'cables')
+                .map(e => (e as CablesWorkEntry).table)
+        );
+    }, [workEntries, selectedProject]);
+
+    const filteredTables = useMemo(() => {
+        if (!selectedProject?.tables) return [];
+        return selectedProject.tables.filter(t_val => 
+            t_val.toLowerCase().includes(tableSearch.toLowerCase())
+        );
+    }, [selectedProject, tableSearch]);
 
     const resetForm = () => {
         setWorkerId1('');
@@ -41,6 +77,8 @@ const PlanPage: React.FC = () => {
         setModuleCount('');
         setTable('');
         setTableSize('medium');
+        setTableSearch('');
+        setIsTableListVisible(false);
     };
     
     const handleBack = () => {
@@ -236,14 +274,64 @@ const PlanPage: React.FC = () => {
                     )}
                     {selectedTaskSubType === 'cables' && (
                         <>
-                            <div>
-                                <label className={formLabelStyle}>{t('work_table_number_label')}</label>
-                                <select value={table} onChange={e => setTable(e.target.value)} required className={formInputStyle}>
-                                    <option value="">{t('work_select_table')}</option>
-                                    {selectedProject?.tables.map(t => <option key={t} value={t}>{t}</option>)}
-                                </select>
+                            <div className="flex justify-between items-center mb-2">
+                                <label className={formLabelStyle}>{t('work_table_number_label')}: <span className="font-bold text-white text-base">{table || '...'}</span></label>
+                                <div className="bg-white/10 p-1 rounded-full flex items-center">
+                                    <button type="button" onClick={() => setTableView('map')} className={`px-3 py-1 text-xs rounded-full transition ${tableView === 'map' ? 'bg-[var(--accent-color)] text-white' : 'text-white/70'}`}>{t('work_view_map')}</button>
+                                    <button type="button" onClick={() => setTableView('list')} className={`px-3 py-1 text-xs rounded-full transition ${tableView === 'list' ? 'bg-[var(--accent-color)] text-white' : 'text-white/70'}`}>{t('work_view_list')}</button>
+                                </div>
                             </div>
-                             <div>
+
+                            {tableView === 'map' ? (
+                                <TableMap 
+                                    tables={selectedProject?.tables || []}
+                                    completedTables={completedTables}
+                                    selectedTable={table}
+                                    onTableSelect={setTable}
+                                />
+                            ) : (
+                                <div className="relative" ref={tableDropdownRef}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsTableListVisible(!isTableListVisible)}
+                                        className={`${formInputStyle} text-left flex justify-between items-center`}
+                                    >
+                                        <span>{table || t('work_select_table')}</span>
+                                        <svg className={`w-5 h-5 transition-transform ${isTableListVisible ? 'rotate-180' : ''}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                                    </button>
+                                    {isTableListVisible && (
+                                        <div className="absolute z-10 w-full mt-1 bg-gray-900/90 backdrop-blur-md border border-white/20 rounded-xl shadow-lg max-h-60">
+                                            <div className="p-2 sticky top-0 bg-gray-900/90">
+                                                <input
+                                                    type="text"
+                                                    placeholder={t('work_search_table_placeholder')}
+                                                    value={tableSearch}
+                                                    onChange={(e) => setTableSearch(e.target.value)}
+                                                    className={formInputStyle}
+                                                    autoFocus
+                                                />
+                                            </div>
+                                            <ul className="overflow-y-auto max-h-48">
+                                                {filteredTables.map(t_val => (
+                                                    <li
+                                                        key={t_val}
+                                                        onClick={() => {
+                                                            setTable(t_val);
+                                                            setIsTableListVisible(false);
+                                                            setTableSearch('');
+                                                        }}
+                                                        className="px-4 py-2 hover:bg-white/10 cursor-pointer"
+                                                    >
+                                                        {t_val} {completedTables.has(t_val) ? <span className="text-xs text-[var(--accent-color-light)] ml-2">({t('stats_completed')})</span> : ''}
+                                                    </li>
+                                                ))}
+                                                {filteredTables.length === 0 && <li className="px-4 py-2 text-white/50">{t('work_no_tables_found')}</li>}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                             <div className="mt-5">
                                 <label className={formLabelStyle}>{t('work_table_size_label')}</label>
                                 <select value={tableSize} onChange={e => setTableSize(e.target.value as TableSize)} required className={formInputStyle}>
                                     <option value="small">{t('work_table_size_small')}</option>
@@ -263,9 +351,9 @@ const PlanPage: React.FC = () => {
     }
     
     return (
-        <div className="h-full w-full flex flex-col overflow-y-auto">
+        <div className="h-full w-full flex flex-col overflow-y-auto p-4">
             {step === 'project' && (
-                <div className="p-4 space-y-4">
+                <div className="space-y-4">
                     <h2 className="text-xl font-bold text-center text-white">{t('work_step1_title')}</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {projects.map(p => (
@@ -279,7 +367,7 @@ const PlanPage: React.FC = () => {
             )}
 
             {step === 'type' && (
-                 <div className="p-4 space-y-4">
+                 <div className="space-y-4">
                     <h2 className="text-xl font-bold text-center text-white">{t('work_step2_title')}</h2>
                     <h3 className="text-center text-white/70 -mt-2 mb-4">{t('stats_select_project_label')} <span className="font-semibold text-white">{selectedProject?.name}</span></h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -295,7 +383,7 @@ const PlanPage: React.FC = () => {
             )}
             
             {step === 'task_subtype' && (
-                <div className="p-4 space-y-4">
+                <div className="space-y-4">
                     <h2 className="text-xl font-bold text-center text-white">{t('work_step3_title')}</h2>
                     <h3 className="text-center text-white/70 -mt-2 mb-4">{t('stats_select_project_label')} <span className="font-semibold text-white">{selectedProject?.name}</span></h3>
                     <div className="grid grid-cols-1 gap-4">

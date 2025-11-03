@@ -13,7 +13,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-40 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="glassmorphism rounded-xl shadow-2xl p-6 w-11/12 max-w-lg text-white border border-white/20"
+        className="floating-card p-6 w-11/12 max-w-lg text-white"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-6">

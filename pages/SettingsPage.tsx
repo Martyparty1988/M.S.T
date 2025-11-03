@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
 import { useTheme } from '../context/ThemeContext';
@@ -6,18 +7,25 @@ import { Theme, ProjectStatus, Project } from '../types';
 import type { Locale } from '../translations';
 import { ZARASAI_STOLY } from '../translations';
 
+const SettingsCard: React.FC<{title: string, children: React.ReactNode}> = ({title, children}) => (
+    <div className="floating-card p-4">
+        <h2 className="text-xl font-bold mb-3 text-white">{title}</h2>
+        {children}
+    </div>
+);
+
 const SettingsPage: React.FC = () => {
   const { 
     projects, addProject, deleteProject, 
     workers, addWorker, deleteWorker, 
-    workEntries, showToast
+    workEntries, showToast, mergeImportedData
   } = useAppContext();
   const { t, locale, setLocale } = useI18n();
   const { theme, setTheme } = useTheme();
 
-  const formInputStyle = "w-full bg-white/10 text-white p-3 rounded-lg border border-white/20 placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] focus:border-[var(--accent-color)] transition";
+  const formInputStyle = "w-full bg-white/10 text-white p-3 rounded-xl border border-white/20 placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] focus:border-[var(--accent-color)] transition";
   const formLabelStyle = "block mb-2 text-sm font-medium text-white/70";
-  const primaryButtonStyle = "w-full bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg transition duration-200 transform hover:scale-105 shadow-lg";
+  const primaryButtonStyle = "w-full bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition duration-200 transform hover:scale-105 active:scale-100 shadow-lg";
   
   const themes: { id: Theme, name: string, colors: [string, string] }[] = [
       { id: 'default', name: t('settings_theme_default'), colors: ['#FF61A6', '#a855f7'] },
@@ -64,7 +72,6 @@ const SettingsPage: React.FC = () => {
     }
     
     let report = `${t('report_title')} ${today.toLocaleDateString()}:\n\n`;
-    // Simplified report for now
     todaysEntries.forEach(entry => {
         const workerNames = entry.workerIds.map(id => workers.find(w=>w.id === id)?.name).join(', ');
         const projectName = projects.find(p => p.id === entry.projectId)?.name;
@@ -80,7 +87,7 @@ const SettingsPage: React.FC = () => {
 
   const handleExportData = () => {
     const dataToExport: { [key: string]: any } = {};
-    const keysToExport = [ 'projects', 'workers', 'workEntries', 'activeProjectId', 'locale', 'theme' ];
+    const keysToExport = [ 'projects', 'workers', 'workEntries', 'locale', 'theme' ];
     
     keysToExport.forEach(key => {
         const item = localStorage.getItem(key);
@@ -116,16 +123,7 @@ const SettingsPage: React.FC = () => {
     reader.onload = (event) => {
         try {
             const data = JSON.parse(event.target?.result as string);
-            // Ensure Zarasai project is preserved or correctly merged
-            if (data.projects && !data.projects.find((p: Project) => p.id === 'zarasai_predefined')) {
-                data.projects.push({ id: 'zarasai_predefined', name: 'Zarasai', status: 'active', tables: ZARASAI_STOLY });
-            }
-
-            Object.keys(data).forEach(key => {
-                localStorage.setItem(key, JSON.stringify(data[key]));
-            });
-            showToast(t('toast_data_imported'));
-            setTimeout(() => window.location.reload(), 1000);
+            mergeImportedData(data, setTheme, setLocale);
         } catch (error) {
             console.error("Import failed:", error);
             showToast(t('toast_import_error'));
@@ -137,9 +135,8 @@ const SettingsPage: React.FC = () => {
   };
 
   return (
-    <div className="h-full w-full p-4 overflow-y-auto space-y-6">
-      <div className="glassmorphism p-4 rounded-xl border border-white/20 shadow-lg">
-        <h2 className="text-xl font-bold mb-3 text-white">{t('settings_theme_title')}</h2>
+    <div className="h-full w-full p-4 overflow-y-auto space-y-4">
+      <SettingsCard title={t('settings_theme_title')}>
         <div className="grid grid-cols-2 gap-4">
             {themes.map(item => (
                 <button
@@ -152,10 +149,9 @@ const SettingsPage: React.FC = () => {
                 </button>
             ))}
         </div>
-      </div>
+      </SettingsCard>
 
-      <div className="glassmorphism p-4 rounded-xl border border-white/20 shadow-lg">
-        <h2 className="text-xl font-bold mb-3 text-white">{t('settings_language_title')}</h2>
+      <SettingsCard title={t('settings_language_title')}>
         <select
           value={locale}
           onChange={(e) => setLocale(e.target.value as Locale)}
@@ -163,11 +159,11 @@ const SettingsPage: React.FC = () => {
         >
           <option value="cs">Čeština</option>
           <option value="en">English</option>
+          <option value="lt">Lietuvių</option>
         </select>
-      </div>
+      </SettingsCard>
       
-      <div className="glassmorphism p-4 rounded-xl border border-white/20 shadow-lg">
-        <h2 className="text-xl font-bold mb-3 text-white">{t('settings_project_management_title')}</h2>
+      <SettingsCard title={t('settings_project_management_title')}>
         <form onSubmit={handleAddProject} className="space-y-4 mb-4">
           <input type="text" name="projectName" placeholder={t('settings_project_name_placeholder')} required className={formInputStyle} />
           <div>
@@ -180,11 +176,11 @@ const SettingsPage: React.FC = () => {
           </div>
            <div>
             <label className={formLabelStyle}>{t('settings_project_tables_label')}</label>
-            <textarea name="projectTables" rows={4} className={formInputStyle}></textarea>
+            <textarea name="projectTables" placeholder='1, 2, 3.1, 4...' rows={4} className={formInputStyle}></textarea>
           </div>
           <button type="submit" className={primaryButtonStyle}>{t('settings_add_project_button')}</button>
         </form>
-        <div className="space-y-2">
+        <div className="space-y-2 max-h-48 overflow-y-auto">
             {projects.map(p => (
                 <div key={p.id} className="bg-white/5 p-3 rounded-lg flex justify-between items-center">
                     <div>
@@ -197,16 +193,15 @@ const SettingsPage: React.FC = () => {
                 </div>
             ))}
         </div>
-      </div>
+      </SettingsCard>
 
-      <div className="glassmorphism p-4 rounded-xl border border-white/20 shadow-lg">
-        <h2 className="text-xl font-bold mb-3 text-white">{t('settings_worker_management_title')}</h2>
+      <SettingsCard title={t('settings_worker_management_title')}>
         <form onSubmit={handleAddWorker} className="space-y-4 mb-4">
           <input type="text" name="workerName" placeholder={t('settings_worker_name_placeholder')} required className={formInputStyle} />
           <input type="number" step="0.01" name="workerRate" placeholder={t('settings_worker_rate_placeholder')} required className={formInputStyle} />
           <button type="submit" className={primaryButtonStyle}>{t('settings_add_worker_button')}</button>
         </form>
-        <div className="space-y-2">
+        <div className="space-y-2 max-h-48 overflow-y-auto">
             {workers.map(w => (
                 <div key={w.id} className="bg-white/5 p-3 rounded-lg flex justify-between items-center">
                     <span className="font-medium">{w.name} (€{w.rate}/hr)</span>
@@ -214,27 +209,25 @@ const SettingsPage: React.FC = () => {
                 </div>
             ))}
         </div>
-      </div>
+      </SettingsCard>
       
-      <div className="glassmorphism p-4 rounded-xl border border-white/20 shadow-lg">
-        <h2 className="text-xl font-bold mb-3 text-white">{t('settings_data_management_title')}</h2>
+      <SettingsCard title={t('settings_data_management_title')}>
         <div className="space-y-4">
-            <button onClick={handleExportData} className="w-full bg-gradient-to-r from-sky-500 to-indigo-500 hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg transition transform hover:scale-105 shadow-lg">
+            <button onClick={handleExportData} className="w-full bg-gradient-to-r from-sky-500 to-indigo-500 hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition transform hover:scale-105 active:scale-100 shadow-lg">
                 {t('settings_export_data_button')}
             </button>
             <div>
               <input type="file" id="importFile" accept="application/json" className="hidden" onChange={handleImportData} />
-              <label htmlFor="importFile" className="w-full block text-center bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg transition transform hover:scale-105 shadow-lg cursor-pointer">
+              <label htmlFor="importFile" className="w-full block text-center bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition transform hover:scale-105 active:scale-100 shadow-lg cursor-pointer">
                   {t('settings_import_data_button')}
               </label>
             </div>
         </div>
-      </div>
+      </SettingsCard>
 
-      <div className="glassmorphism p-4 rounded-xl border border-white/20 shadow-lg">
-        <h2 className="text-xl font-bold mb-3 text-white">{t('settings_actions_title')}</h2>
-        <button onClick={generateDailyReport} className="w-full bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white font-bold py-3 px-4 rounded-lg transition transform hover:scale-105 shadow-lg">{t('settings_generate_report_button')}</button>
-      </div>
+      <SettingsCard title={t('settings_actions_title')}>
+        <button onClick={generateDailyReport} className="w-full bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white font-bold py-3 px-4 rounded-xl transition transform hover:scale-105 active:scale-100 shadow-lg">{t('settings_generate_report_button')}</button>
+      </SettingsCard>
     </div>
   );
 };

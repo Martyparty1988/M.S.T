@@ -14,7 +14,7 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [locale, setLocale] = useLocalStorage<Locale>('locale', 'cs');
 
   const t = useCallback((key: TranslationKey, ...args: any[]): string => {
-    let translation = translations[locale][key] || key;
+    let translation = translations[locale][key] || translations['en'][key] || key;
     if (args.length > 0) {
       translation = translation.replace(/{(\d)}/g, (match, number) => {
         return typeof args[number] !== 'undefined' ? args[number] : match;

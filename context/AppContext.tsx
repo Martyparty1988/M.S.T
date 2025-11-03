@@ -1,8 +1,9 @@
+
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { Project, Worker, WorkEntry, Page } from '../types';
+import { Project, Worker, WorkEntry, Page, Theme } from '../types';
 import { useI18n } from './I18nContext';
-import { ZARASAI_STOLY } from '../translations';
+import { ZARASAI_STOLY, Locale } from '../translations';
 
 const ZARASAI_PROJECT: Project = {
   id: 'zarasai_predefined',
@@ -15,7 +16,6 @@ interface AppState {
   projects: Project[];
   workers: Worker[];
   workEntries: WorkEntry[];
-  activeProjectId: string | null;
   page: Page;
   toast: string | null;
   loading: boolean;
@@ -25,7 +25,6 @@ interface AppContextType extends AppState {
   setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
   setWorkers: React.Dispatch<React.SetStateAction<Worker[]>>;
   setWorkEntries: React.Dispatch<React.SetStateAction<WorkEntry[]>>;
-  setActiveProjectId: React.Dispatch<React.SetStateAction<string | null>>;
   setPage: React.Dispatch<React.SetStateAction<Page>>;
   
   addProject: (project: Omit<Project, 'id'>) => void;
@@ -35,6 +34,7 @@ interface AppContextType extends AppState {
   addWorkEntry: (entry: Omit<WorkEntry, 'id'>) => void;
   updateWorkEntry: (entry: WorkEntry) => void;
   deleteWorkEntry: (id: string) => void;
+  mergeImportedData: (data: any, setTheme: (theme: Theme) => void, setLocale: (locale: Locale) => void) => void;
 
   showToast: (message: string) => void;
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
@@ -46,7 +46,6 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
   const [projects, setProjects] = useLocalStorage<Project[]>('projects', [ZARASAI_PROJECT]);
   const [workers, setWorkers] = useLocalStorage<Worker[]>('workers', []);
   const [workEntries, setWorkEntries] = useLocalStorage<WorkEntry[]>('workEntries', []);
-  const [activeProjectId, setActiveProjectId] = useLocalStorage<string | null>('activeProjectId', null);
   const [page, setPage] = useState<Page>('plan');
   const [toast, setToast] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -70,11 +69,8 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     }
     setProjects(prev => prev.filter(p => p.id !== id));
     setWorkEntries(prev => prev.filter(w => w.projectId !== id));
-    if (activeProjectId === id) {
-      setActiveProjectId(null);
-    }
     showToast(t('toast_project_deleted'));
-  }, [setProjects, setWorkEntries, activeProjectId, setActiveProjectId, t]);
+  }, [setProjects, setWorkEntries, t]);
 
   const addWorker = useCallback((worker: Omit<Worker, 'id'>) => {
     setWorkers(prev => [...prev, { ...worker, id: Date.now().toString() }]);
@@ -110,17 +106,67 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     showToast(t('toast_entry_deleted'));
   }, [setWorkEntries, t]);
 
+  const mergeImportedData = useCallback((data: any, setTheme: (theme: Theme) => void, setLocale: (locale: Locale) => void) => {
+    // 1. Merge Projects
+    const localProjects = new Map(projects.map(p => [p.id, p]));
+    if (data.projects) {
+        data.projects.forEach((p: Project) => {
+            if (p.id === ZARASAI_PROJECT.id) return; // Never overwrite predefined project
+            localProjects.set(p.id, p);
+        });
+    }
+    if (!localProjects.has(ZARASAI_PROJECT.id)) {
+        localProjects.set(ZARASAI_PROJECT.id, ZARASAI_PROJECT);
+    }
+    setProjects(Array.from(localProjects.values()));
+
+    // 2. Merge Workers
+    const localWorkers = new Map(workers.map(w => [w.id, w]));
+    if (data.workers) {
+        data.workers.forEach((w: Worker) => {
+            localWorkers.set(w.id, w);
+        });
+    }
+    setWorkers(Array.from(localWorkers.values()));
+
+    // 3. Merge Work Entries (with conflict resolution)
+    const localWorkEntries = new Map(workEntries.map(e => [e.id, e]));
+    if (data.workEntries) {
+        data.workEntries.forEach((e: WorkEntry) => {
+            const existingEntry = localWorkEntries.get(e.id);
+            if (existingEntry) {
+                // Conflict: keep the one with the later endTime
+                if (new Date(e.endTime) > new Date(existingEntry.endTime)) {
+                    localWorkEntries.set(e.id, e);
+                }
+            } else {
+                // No conflict, just add it
+                localWorkEntries.set(e.id, e);
+            }
+        });
+    }
+    setWorkEntries(Array.from(localWorkEntries.values()));
+
+    // 4. Merge Settings
+    if (data.theme) setTheme(data.theme);
+    if (data.locale) setLocale(data.locale);
+
+    showToast(t('toast_data_merged'));
+    setTimeout(() => window.location.reload(), 1000);
+  }, [projects, workers, workEntries, setProjects, setWorkers, setWorkEntries, showToast, t]);
+
+
   const value = {
     projects, setProjects,
     workers, setWorkers,
     workEntries, setWorkEntries,
-    activeProjectId, setActiveProjectId,
     page, setPage,
     toast, showToast,
     loading, setLoading,
     addProject, deleteProject,
     addWorker, deleteWorker,
     addWorkEntry, updateWorkEntry, deleteWorkEntry,
+    mergeImportedData
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

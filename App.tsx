@@ -32,10 +32,10 @@ const AppContent: React.FC = () => {
   return (
     <div className="h-full w-full flex flex-col antialiased font-sans text-gray-100">
       <header 
-        className="p-4 text-center shadow-lg glassmorphism z-10 border-b border-white/10"
-        style={{ paddingTop: `calc(1rem + var(--safe-area-inset-top))` }}
+        className="text-center z-10 p-3 floating-card mx-4 mt-4"
+        style={{ paddingTop: `calc(0.75rem + var(--safe-area-inset-top))` }}
       >
-        <h1 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)]">
+        <h1 className="text-2xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)]">
           {t('app_title')}
         </h1>
       </header>
