@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
@@ -38,9 +39,9 @@ const WorkLogForm: React.FC<{
     const [selectedTaskSubType, setSelectedTaskSubType] = useState<TaskSubType | null>(null);
     const [tableView, setTableView] = useState<TableView>('map');
 
-    // Form state
-    const [workerId1, setWorkerId1] = useState('');
-    const [workerId2, setWorkerId2] = useState('');
+    // Form state - Initialize workers from local storage if available
+    const [workerId1, setWorkerId1] = useState(localStorage.getItem('last_worker_1') || '');
+    const [workerId2, setWorkerId2] = useState(localStorage.getItem('last_worker_2') || '');
     const [startTime, setStartTime] = useState('');
     const [endTime, setEndTime] = useState('');
     const [description, setDescription] = useState('');
@@ -58,8 +59,25 @@ const WorkLogForm: React.FC<{
     const primaryButtonStyle = "w-full bg-gradient-to-r from-[var(--gradient-start)] to-[var(--gradient-end)] hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition duration-200 ease-in-out transform hover:scale-105 active:scale-95 shadow-lg disabled:opacity-50 text-base";
     // #endregion
 
+    // Initialize Start Time to current time rounded to nearest 15min
+    useEffect(() => {
+        if (!startTime) {
+            const now = new Date();
+            const minutes = now.getMinutes();
+            const roundedMinutes = Math.round(minutes / 15) * 15;
+            now.setMinutes(roundedMinutes, 0, 0);
+            
+            // Adjust for local timezone offset when slicing ISO string
+            const offset = now.getTimezoneOffset() * 60000;
+            const localISOTime = (new Date(now.getTime() - offset)).toISOString().slice(0, 16);
+            setStartTime(localISOTime);
+        }
+    }, []);
+
     const resetForm = useCallback(() => {
-        setWorkerId1(''); setWorkerId2(''); setStartTime(''); setEndTime('');
+        // Don't reset workers to keep the "smart default" behavior
+        // setWorkerId1(''); setWorkerId2(''); 
+        setStartTime(''); setEndTime('');
         setDescription(''); setModuleCount(''); setTable(''); setTableSize('medium');
         setTableSearch(''); setIsTableListVisible(false);
     }, []);
@@ -78,19 +96,42 @@ const WorkLogForm: React.FC<{
     const handleStartTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newStartTime = e.target.value;
         setStartTime(newStartTime);
-        if (newStartTime && !endTime) {
-            const start = new Date(newStartTime);
-            start.setHours(start.getHours() + 9);
-            const newEndTime = start.toISOString().slice(0, 16);
-            setEndTime(newEndTime);
+        // If end time is not set or before new start time, reset it
+        if (endTime && new Date(endTime) < new Date(newStartTime)) {
+            setEndTime('');
         }
     };
     
+    const setDuration = (hours: number | 'full') => {
+        if (!startTime) return;
+        const start = new Date(startTime);
+        
+        if (hours === 'full') {
+            // Set 08:00 to 17:00 on the day of start time
+            const dayStart = new Date(start);
+            dayStart.setHours(8, 0, 0, 0);
+            const dayEnd = new Date(start);
+            dayEnd.setHours(17, 0, 0, 0);
+            
+            const offset = dayStart.getTimezoneOffset() * 60000;
+            setStartTime((new Date(dayStart.getTime() - offset)).toISOString().slice(0, 16));
+            setEndTime((new Date(dayEnd.getTime() - offset)).toISOString().slice(0, 16));
+        } else {
+            const end = new Date(start.getTime() + (hours * 60 * 60 * 1000));
+            const offset = end.getTimezoneOffset() * 60000;
+            setEndTime((new Date(end.getTime() - offset)).toISOString().slice(0, 16));
+        }
+    };
+
     const completedTables = useMemo(() => new Set(
         workEntries
             .filter(e => e.projectId === project.id && e.type === 'task' && e.subType === 'cables')
             .map(e => (e as CablesWorkEntry).table)
     ), [workEntries, project.id]);
+
+    const handleTableToggle = (t_val: string) => {
+        setTable(prev => prev === t_val ? '' : t_val);
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -99,6 +140,10 @@ const WorkLogForm: React.FC<{
         const start = new Date(startTime);
         const end = new Date(endTime);
         if (end <= start) return showToast(t('error_end_time_before_start'));
+
+        // Save workers to local storage for next time
+        localStorage.setItem('last_worker_1', workerId1);
+        localStorage.setItem('last_worker_2', workerId2);
 
         const duration = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
         const workerIds = [workerId1];
@@ -167,6 +212,7 @@ const WorkLogForm: React.FC<{
                     <div className="grid grid-cols-1 gap-4">
                         <div onClick={() => { setSelectedTaskSubType('paneling'); setStep('form'); }} className={cardButtonStyle}><h3 className="text-xl font-bold text-white">{t('work_task_paneling')}</h3></div>
                         <div onClick={() => { setSelectedTaskSubType('construction'); setStep('form'); }} className={cardButtonStyle}><h3 className="text-xl font-bold text-white">{t('work_task_construction')}</h3></div>
+                        <div onClick={() => { setSelectedTaskSubType('cables'); setStep('form'); }} className={cardButtonStyle}><h3 className="text-xl font-bold text-white">{t('work_task_cables')}</h3></div>
                     </div>
                 </div>
             )}
@@ -176,24 +222,35 @@ const WorkLogForm: React.FC<{
                     <h2 className="text-2xl font-bold text-center text-white">{selectedWorkType === 'hourly' ? t('work_form_title_hourly') : t(`work_form_title_${selectedTaskSubType}` as any)}</h2>
                     <form onSubmit={handleSubmit} className="space-y-5">
                        <>
-                            <div>
-                                <label className={formLabelStyle}>{t('work_worker1_label')}</label>
-                                <select value={workerId1} onChange={e => setWorkerId1(e.target.value)} required className={formInputStyle}>
-                                    <option value="">{t('work_select_worker')}</option>
-                                    {workers.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                                </select>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className={formLabelStyle}>{t('work_worker1_label')}</label>
+                                    <select value={workerId1} onChange={e => setWorkerId1(e.target.value)} required className={formInputStyle}>
+                                        <option value="">{t('work_select_worker')}</option>
+                                        {workers.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className={formLabelStyle}>{t('work_worker2_label')}</label>
+                                    <select value={workerId2} onChange={e => setWorkerId2(e.target.value)} disabled={!workerId1} className={formInputStyle}>
+                                        <option value="">{t('work_select_worker')}</option>
+                                        {workers.filter(w => w.id !== workerId1).map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                                    </select>
+                                </div>
                             </div>
-                            <div>
-                                <label className={formLabelStyle}>{t('work_worker2_label')}</label>
-                                <select value={workerId2} onChange={e => setWorkerId2(e.target.value)} disabled={!workerId1} className={formInputStyle}>
-                                    <option value="">{t('work_select_worker')}</option>
-                                    {workers.filter(w => w.id !== workerId1).map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                                </select>
-                            </div>
+                            
                             <div>
                                 <label className={formLabelStyle}>{t('work_start_time_label')}</label>
                                 <input type="datetime-local" value={startTime} onChange={handleStartTimeChange} required className={formInputStyle} />
                             </div>
+
+                            <div className="grid grid-cols-4 gap-2">
+                                <button type="button" onClick={() => setDuration(1)} className="bg-white/10 hover:bg-white/20 text-white py-2 rounded-lg text-sm font-medium transition">{t('work_quick_time_1h')}</button>
+                                <button type="button" onClick={() => setDuration(4)} className="bg-white/10 hover:bg-white/20 text-white py-2 rounded-lg text-sm font-medium transition">{t('work_quick_time_4h')}</button>
+                                <button type="button" onClick={() => setDuration(8)} className="bg-white/10 hover:bg-white/20 text-white py-2 rounded-lg text-sm font-medium transition">{t('work_quick_time_8h')}</button>
+                                <button type="button" onClick={() => setDuration('full')} className="bg-white/10 hover:bg-white/20 text-white py-2 rounded-lg text-xs font-medium transition whitespace-nowrap overflow-hidden text-ellipsis px-1">{t('work_quick_time_full_day')}</button>
+                            </div>
+
                              <div>
                                 <label className={formLabelStyle}>{t('work_end_time_label')}</label>
                                 <input type="datetime-local" value={endTime} onChange={e => setEndTime(e.target.value)} required className={formInputStyle} />
@@ -214,29 +271,52 @@ const WorkLogForm: React.FC<{
                                     </div>
                                 </div>
                                 {tableView === 'map' ? 
-                                <div className="h-80 w-full">
-                                    <TableMap tables={project?.tables || []} completedTables={completedTables} selectedTables={new Set(table ? [table] : [])} onTableSelect={setTable} />
+                                <div className="h-80 w-full mb-4">
+                                    <TableMap 
+                                        tables={project?.tables || []} 
+                                        completedTables={completedTables} 
+                                        selectedTables={new Set(table ? [table] : [])} 
+                                        onTableSelect={handleTableToggle} 
+                                    />
                                 </div>
                                 : (
-                                    <div className="relative" ref={tableDropdownRef}>
+                                    <div className="relative mb-4" ref={tableDropdownRef}>
                                         <input onClick={() => setIsTableListVisible(!isTableListVisible)} onFocus={() => setIsTableListVisible(true)} type="text" placeholder={t('work_search_table_placeholder')} value={tableSearch} onChange={(e) => setTableSearch(e.target.value)} className={formInputStyle} />
                                         {isTableListVisible && (
                                             <ul className="absolute z-10 w-full mt-1 bg-gray-900/90 backdrop-blur-md border border-white/20 rounded-xl shadow-lg max-h-48 overflow-y-auto">
                                                 {(project.tables || []).filter(t_val => t_val.toLowerCase().includes(tableSearch.toLowerCase())).map(t_val => (
-                                                    <li key={t_val} onClick={() => { setTable(t_val); setIsTableListVisible(false); setTableSearch(''); }} className="px-4 py-2 hover:bg-white/10 cursor-pointer">{t_val} {completedTables.has(t_val) && '✅'}</li>
+                                                    <li key={t_val} onClick={() => { setTable(t_val); setIsTableListVisible(false); setTableSearch(''); }} className="px-4 py-2 hover:bg-white/10 cursor-pointer flex justify-between items-center">
+                                                        <span>{t_val}</span>
+                                                        {completedTables.has(t_val) && <span className="text-green-400 text-xs">Completed</span>}
+                                                    </li>
                                                 ))}
+                                                {(project.tables || []).filter(t => t.toLowerCase().includes(tableSearch.toLowerCase())).length === 0 && (
+                                                    <li className="px-4 py-2 text-white/50 text-sm">{t('work_no_tables_found')}</li>
+                                                )}
                                             </ul>
                                         )}
+                                        {table && <div className="mt-2 p-2 bg-white/10 rounded text-center">{t('records_table_label')}: {table}</div>}
                                     </div>
                                 )}
 
                                 <div>
                                     <label className={formLabelStyle}>{t('work_table_size_label')}</label>
-                                    <select value={tableSize} onChange={e => setTableSize(e.target.value as TableSize)} required className={formInputStyle}>
-                                        <option value="small">{t('work_table_size_small')}</option>
-                                        <option value="medium">{t('work_table_size_medium')}</option>
-                                        <option value="large">{t('work_table_size_large')}</option>
-                                    </select>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {(['small', 'medium', 'large'] as TableSize[]).map((size) => (
+                                            <button
+                                                key={size}
+                                                type="button"
+                                                onClick={() => setTableSize(size)}
+                                                className={`py-3 px-2 rounded-xl text-sm font-bold transition duration-200 border ${
+                                                    tableSize === size 
+                                                    ? 'bg-[var(--accent-color)] border-[var(--accent-color)] text-white shadow-lg scale-105' 
+                                                    : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
+                                                }`}
+                                            >
+                                                {t(`work_table_size_${size}` as any)}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
                             </>
                         )}

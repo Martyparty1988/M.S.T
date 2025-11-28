@@ -1,7 +1,9 @@
+
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
-import { WorkEntry, HourlyWorkEntry, PanelingWorkEntry, ConstructionWorkEntry, CablesWorkEntry } from '../types';
+import { WorkEntry, HourlyWorkEntry, PanelingWorkEntry, ConstructionWorkEntry, CablesWorkEntry, TableSize } from '../types';
 import Modal from '../components/Modal';
 import SkeletonCard from '../components/SkeletonCard';
 
@@ -19,9 +21,18 @@ const EditWorkEntryModal: React.FC<EditWorkEntryModalProps> = ({ isOpen, onClose
   useEffect(() => {
     if (entry) {
         const entryCopy = { ...entry };
-        const formatForInput = (iso: string) => iso.slice(0, 16);
-        entryCopy.startTime = formatForInput(entryCopy.startTime);
-        entryCopy.endTime = formatForInput(entryCopy.endTime);
+        
+        // Correctly format UTC ISO string to Local ISO string for datetime-local input
+        const toLocalISOString = (isoString: string) => {
+            if (!isoString) return '';
+            const date = new Date(isoString);
+            const offset = date.getTimezoneOffset() * 60000;
+            const localDate = new Date(date.getTime() - offset);
+            return localDate.toISOString().slice(0, 16);
+        };
+
+        entryCopy.startTime = toLocalISOString(entry.startTime);
+        entryCopy.endTime = toLocalISOString(entry.endTime);
         setFormData(entryCopy);
     }
   }, [entry]);
@@ -121,11 +132,17 @@ const EditWorkEntryModal: React.FC<EditWorkEntryModalProps> = ({ isOpen, onClose
                 <>
                     <div>
                         <label className={formLabelStyle}>{t('work_table_number_label')}</label>
-                        <input type="text" value={(formData as CablesWorkEntry).table} readOnly className={`${formInputStyle} opacity-70`} />
+                        <input 
+                            type="text" 
+                            value={(formData as CablesWorkEntry).table} 
+                            readOnly 
+                            disabled
+                            className={`${formInputStyle} opacity-50 cursor-not-allowed bg-white/5`} 
+                        />
                     </div>
                     <div>
                         <label htmlFor="tableSize" className={formLabelStyle}>{t('work_table_size_label')}</label>
-                        <select name="tableSize" id="tableSize" value={(formData as CablesWorkEntry).tableSize} onChange={handleChange} required className={formInputStyle}>
+                        <select name="tableSize" id="tableSize" value={(formData as CablesWorkEntry).tableSize || 'medium'} onChange={handleChange} required className={formInputStyle}>
                             <option value="small">{t('work_table_size_small')}</option>
                             <option value="medium">{t('work_table_size_medium')}</option>
                             <option value="large">{t('work_table_size_large')}</option>
@@ -157,6 +174,7 @@ const RecordsPage: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<WorkEntry | null>(null);
   const [selectedWorkerFilterId, setSelectedWorkerFilterId] = useState<string>('');
+  const [selectedTableSizeFilter, setSelectedTableSizeFilter] = useState<TableSize | ''>('');
   const [tableSearchQuery, setTableSearchQuery] = useState('');
   const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set());
   
@@ -192,6 +210,14 @@ const RecordsPage: React.FC = () => {
 
     if (selectedWorkerFilterId) {
         filtered = filtered.filter(entry => entry.workerIds.includes(selectedWorkerFilterId));
+    }
+
+    if (selectedTableSizeFilter) {
+        filtered = filtered.filter(entry => 
+            entry.type === 'task' && 
+            entry.subType === 'cables' && 
+            (entry as CablesWorkEntry).tableSize === selectedTableSizeFilter
+        );
     }
 
     if (tableSearchQuery.trim()) {
@@ -233,7 +259,7 @@ const RecordsPage: React.FC = () => {
         return acc;
     }, {});
 
-  }, [workEntries, selectedWorkerFilterId, tableSearchQuery]);
+  }, [workEntries, selectedWorkerFilterId, tableSearchQuery, selectedTableSizeFilter]);
   
   useEffect(() => {
     // Collapse all but the first day by default
@@ -277,7 +303,7 @@ const RecordsPage: React.FC = () => {
     <div className="h-full w-full flex flex-col p-4 space-y-6 overflow-hidden">
       <div className="floating-card p-5">
         <h2 className="text-xl font-bold mb-3 text-white">{t('records_all_entries_title')}</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <input
                 type="text"
                 placeholder={t('records_search_by_table')}
@@ -293,6 +319,17 @@ const RecordsPage: React.FC = () => {
             >
                 <option value="">{t('records_all_workers')}</option>
                 {workers.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+            </select>
+            <select
+                id="sizeFilter"
+                value={selectedTableSizeFilter}
+                onChange={(e) => setSelectedTableSizeFilter(e.target.value as TableSize | '')}
+                className={formInputStyle}
+            >
+                <option value="">{t('records_all_sizes')}</option>
+                <option value="small">{t('work_table_size_small')}</option>
+                <option value="medium">{t('work_table_size_medium')}</option>
+                <option value="large">{t('work_table_size_large')}</option>
             </select>
         </div>
       </div>
@@ -317,7 +354,6 @@ const RecordsPage: React.FC = () => {
                     </button>
                     {!collapsedDays.has(date) && (
                         <div className="space-y-4">
-                        {/* FIX: Cast 'entries' to WorkEntry[] to fix TypeScript error "Property 'map' does not exist on type 'unknown'". This can happen with Object.entries in some TypeScript configurations where value types are not correctly inferred. */}
                         {(entries as WorkEntry[]).map((entry: WorkEntry) => (
                             <div key={entry.id} className="floating-card p-5 flex justify-between items-center transition duration-200 ease-in-out hover:bg-white/20">
                                 <div className="flex-grow">

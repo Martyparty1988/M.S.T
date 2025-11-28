@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { AppProvider, useAppContext } from './context/AppContext';
 import { I18nProvider, useI18n } from './context/I18nContext';
@@ -11,6 +12,7 @@ import SettingsPage from './pages/SettingsPage';
 import BottomNav from './components/BottomNav';
 import Loader from './components/Loader';
 import Toast from './components/Toast';
+import GeminiAssistant from './components/GeminiAssistant';
 import { Page } from './types';
 
 const pageOrder: Page[] = ['plan', 'attendance', 'records', 'payroll', 'stats', 'settings'];
@@ -72,6 +74,7 @@ const AppContent: React.FC = () => {
         </div>
       </main>
       
+      <GeminiAssistant />
       <BottomNav />
       {loading && <Loader />}
       {toast && <Toast message={toast} />}

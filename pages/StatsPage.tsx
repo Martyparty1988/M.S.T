@@ -113,6 +113,7 @@ const StatsPage: React.FC = () => {
         const workerPerformanceData = projectWorkers.map(worker => {
             const workerEntries = projectEntries.filter(e => e.workerIds.includes(worker.id));
             const totalHours = workerEntries.reduce((sum, e) => sum + (e.duration / e.workerIds.length), 0);
+            
             const totalEarnings = workerEntries.reduce((sum, e) => {
                  const numWorkers = e.workerIds.length;
                  let earningsPart = 0;
@@ -129,11 +130,22 @@ const StatsPage: React.FC = () => {
                 }
                 return sum + earningsPart;
             }, 0);
+
+            // Calculate tables per hour (specific to cable tasks)
+            const cableEntries = workerEntries.filter(e => e.type === 'task' && e.subType === 'cables');
+            const hoursOnCables = cableEntries.reduce((sum, e) => sum + (e.duration / e.workerIds.length), 0);
+            const tablesInstalled = cableEntries.reduce((sum, e) => sum + (1 / e.workerIds.length), 0);
+            const tablesPerHour = hoursOnCables > 0 ? tablesInstalled / hoursOnCables : 0;
+
             return {
                 name: worker.name.split(' ')[0],
-                avgEarning: totalHours > 0 ? totalEarnings / totalHours : 0
+                avgEarning: totalHours > 0 ? totalEarnings / totalHours : 0,
+                tablesPerHour
             };
-        }).sort((a,b) => b.avgEarning - a.avgEarning);
+        });
+
+        const sortedByEarnings = [...workerPerformanceData].sort((a,b) => b.avgEarning - a.avgEarning);
+        const sortedByEfficiency = [...workerPerformanceData].sort((a,b) => b.tablesPerHour - a.tablesPerHour);
 
 
         return {
@@ -144,7 +156,8 @@ const StatsPage: React.FC = () => {
             totalCost: totalCostSoFar,
             averageVelocity: averageVelocity.toFixed(1),
             velocityChartData,
-            workerPerformanceData
+            sortedByEarnings,
+            sortedByEfficiency
         };
 
     }, [selectedProjectId, workEntries, workers, projects, t, locale]);
@@ -203,27 +216,50 @@ const StatsPage: React.FC = () => {
                         </LineChart>
                     </ResponsiveContainer>
                 </StatCard>
-                <StatCard title={t('stats_worker_performance')}>
-                     <ResponsiveContainer width="100%" height={250}>
-                        <BarChart data={stats.workerPerformanceData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                            <XAxis dataKey="name" stroke="rgba(255,255,255,0.7)" fontSize={12} />
-                            <YAxis stroke="rgba(255,255,255,0.7)" fontSize={12} />
-                            <Tooltip 
-                                cursor={{fill: 'rgba(255,255,255,0.1)'}}
-                                contentStyle={{ backgroundColor: 'rgba(20, 20, 40, 0.8)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px' }}
-                            />
-                            <Legend formatter={() => t('stats_avg_earnings_per_hour')} />
-                            <Bar dataKey="avgEarning" name="Avg €/h" fill="url(#colorUv)" />
-                             <defs>
-                                <linearGradient id="colorUv" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="var(--gradient-start)" stopOpacity={0.8}/>
-                                <stop offset="95%" stopColor="var(--gradient-end)" stopOpacity={0.8}/>
-                                </linearGradient>
-                            </defs>
-                        </BarChart>
-                    </ResponsiveContainer>
-                </StatCard>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <StatCard title={t('stats_worker_performance')}>
+                         <ResponsiveContainer width="100%" height={250}>
+                            <BarChart data={stats.sortedByEarnings} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                                <XAxis dataKey="name" stroke="rgba(255,255,255,0.7)" fontSize={12} />
+                                <YAxis stroke="rgba(255,255,255,0.7)" fontSize={12} />
+                                <Tooltip 
+                                    cursor={{fill: 'rgba(255,255,255,0.1)'}}
+                                    contentStyle={{ backgroundColor: 'rgba(20, 20, 40, 0.8)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px' }}
+                                />
+                                <Legend formatter={() => t('stats_avg_earnings_per_hour')} />
+                                <Bar dataKey="avgEarning" name="Avg €/h" fill="url(#colorUv)" />
+                                 <defs>
+                                    <linearGradient id="colorUv" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="var(--gradient-start)" stopOpacity={0.8}/>
+                                    <stop offset="95%" stopColor="var(--gradient-end)" stopOpacity={0.8}/>
+                                    </linearGradient>
+                                </defs>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </StatCard>
+                    <StatCard title={t('stats_installation_efficiency')}>
+                         <ResponsiveContainer width="100%" height={250}>
+                            <BarChart data={stats.sortedByEfficiency} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                                <XAxis dataKey="name" stroke="rgba(255,255,255,0.7)" fontSize={12} />
+                                <YAxis stroke="rgba(255,255,255,0.7)" fontSize={12} />
+                                <Tooltip 
+                                    cursor={{fill: 'rgba(255,255,255,0.1)'}}
+                                    contentStyle={{ backgroundColor: 'rgba(20, 20, 40, 0.8)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px' }}
+                                />
+                                <Legend formatter={() => t('stats_tables_per_hour_chart')} />
+                                <Bar dataKey="tablesPerHour" name="Tables/h" fill="url(#colorEf)" />
+                                 <defs>
+                                    <linearGradient id="colorEf" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                                    <stop offset="95%" stopColor="#06b6d4" stopOpacity={0.8}/>
+                                    </linearGradient>
+                                </defs>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </StatCard>
+                </div>
             </div>
         );
     }
