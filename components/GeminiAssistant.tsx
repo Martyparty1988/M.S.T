@@ -58,23 +58,74 @@ const GeminiAssistant: React.FC = () => {
   }, [messages, isOpen]);
 
   const getSystemContext = () => {
-    // Filter for last 14 days of logs to keep context relevant and small enough
-    const twoWeeksAgo = new Date();
-    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+    // 1. Projects Summary
+    const projectStats = projects.map(p => {
+        const pEntries = workEntries.filter(e => e.projectId === p.id);
+        const cableEntries = pEntries.filter(e => e.type === 'task' && e.subType === 'cables');
+        const completedTables = new Set(cableEntries.map(e => (e as any).table));
+        return {
+            name: p.name,
+            status: p.status,
+            totalTables: p.tables.length,
+            completedTables: completedTables.size,
+            progress: p.tables.length > 0 ? (completedTables.size / p.tables.length * 100).toFixed(1) + '%' : '0%'
+        };
+    });
+
+    // 2. Workers Summary (All time stats for better context)
+    const workerStats = workers.map(w => {
+        const wEntries = workEntries.filter(e => e.workerIds.includes(w.id));
+        const totalHours = wEntries.reduce((sum, e) => sum + (e.duration / e.workerIds.length), 0);
+        
+        // Simple earnings calculation
+        let totalEarnings = 0;
+        wEntries.forEach(entry => {
+             const numWorkers = entry.workerIds.length;
+             let earningsPart = 0;
+             if (entry.type === 'hourly' || (entry.type === 'task' && entry.subType === 'construction')) {
+                earningsPart = (entry.duration / numWorkers) * w.rate;
+            } else if (entry.type === 'task' && entry.subType === 'paneling') {
+                earningsPart = (((entry as any).moduleCount || 0) / numWorkers) * (w.panelRate || 0);
+            } else if (entry.type === 'task' && entry.subType === 'cables') {
+                const cableEntry = entry as any;
+                let tableRate = 0;
+                if (cableEntry.tableSize === 'small') tableRate = w.cableRateSmall || 0;
+                else if (cableEntry.tableSize === 'medium') tableRate = w.cableRateMedium || 0;
+                else if (cableEntry.tableSize === 'large') tableRate = w.cableRateLarge || 0;
+                earningsPart = tableRate / numWorkers;
+            }
+            totalEarnings += earningsPart;
+        });
+
+        return {
+            name: w.name,
+            hourlyRate: w.rate,
+            totalHoursLogged: totalHours.toFixed(1),
+            totalEarnings: totalEarnings.toFixed(2)
+        };
+    });
+
+    // 3. Detailed Logs (Last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
-    const recentEntries = workEntries
-      .filter(e => new Date(e.date) >= twoWeeksAgo)
+    const detailedLogs = workEntries
+      .filter(e => new Date(e.date) >= thirtyDaysAgo)
       .map(e => ({
-        ...e,
-        // Simplified structure for token efficiency
         date: e.date.split('T')[0],
-        workers: e.workerIds.map(id => workers.find(w => w.id === id)?.name || id).join(', ')
+        project: projects.find(p => p.id === e.projectId)?.name || 'Unknown',
+        workers: e.workerIds.map(id => workers.find(w => w.id === id)?.name).join(', '),
+        type: e.type === 'task' ? e.subType : 'hourly',
+        duration: e.duration.toFixed(2) + 'h',
+        details: e.type === 'task' && e.subType === 'cables' 
+            ? `Table ${(e as any).table}` 
+            : (e.type === 'task' && e.subType === 'paneling' ? `${(e as any).moduleCount} modules` : (e as any).description || '-')
       }));
 
     return JSON.stringify({
-      availableProjects: projects.map(p => ({ name: p.name, status: p.status, totalTables: p.tables?.length || 0 })),
-      workers: workers.map(w => ({ name: w.name, hourlyRate: w.rate })),
-      recentWorkLogs: recentEntries
+      projects: projectStats,
+      workers: workerStats,
+      recentLogs: detailedLogs
     });
   };
 
@@ -96,14 +147,24 @@ const GeminiAssistant: React.FC = () => {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const context = getSystemContext();
       
-      const systemInstruction = `You are a helpful solar construction project assistant. 
-      You have access to the raw data of workers, projects, and work logs in JSON format.
-      Current Data Context: ${context}
+      const systemInstruction = `You are an intelligent assistant for a solar installation team management app.
+      You have access to real-time data about projects, workers, and work logs.
       
-      Answer questions concisely based on this data.
-      If asked about progress, calculate totals from the logs.
-      If asked about specific workers, aggregate their logs.
-      Always reply in the user's language or the context language.`;
+      DATA CONTEXT:
+      ${context}
+      
+      YOUR CAPABILITIES:
+      1. Project Progress: Report on completion status, total tables vs completed, and progress percentage.
+      2. Worker Performance: Analyze earnings, hours worked, and specific contributions based on the logs.
+      3. Work Details: Answer questions about what happened on specific days (within the provided log range).
+      
+      GUIDELINES:
+      - Be concise and professional.
+      - If asked about earnings, refer to the 'totalEarnings' in worker stats or sum up from relevant logs.
+      - If asked about a specific date not in the logs, state that you only have recent data.
+      - Calculate totals dynamically if the user asks for specific timeframes (e.g. "earnings last week") using the 'recentLogs'.
+      - Use the provided project names and worker names accurately.
+      - Always reply in the user's language or English if unsure.`;
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',

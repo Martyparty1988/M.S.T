@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
@@ -157,7 +158,8 @@ const StatsPage: React.FC = () => {
             averageVelocity: averageVelocity.toFixed(1),
             velocityChartData,
             sortedByEarnings,
-            sortedByEfficiency
+            sortedByEfficiency,
+            allWorkerData: workerPerformanceData
         };
 
     }, [selectedProjectId, workEntries, workers, projects, t, locale]);
@@ -260,6 +262,24 @@ const StatsPage: React.FC = () => {
                         </ResponsiveContainer>
                     </StatCard>
                 </div>
+                
+                <StatCard title={t('stats_combined_performance_title')}>
+                    <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={stats.allWorkerData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                            <XAxis dataKey="name" stroke="rgba(255,255,255,0.7)" fontSize={12} />
+                            <YAxis yAxisId="left" stroke="#3b82f6" fontSize={12} label={{ value: t('stats_tables_per_hour_chart'), angle: -90, position: 'insideLeft', fill: '#3b82f6', style: { textAnchor: 'middle' } }} />
+                            <YAxis yAxisId="right" orientation="right" stroke="var(--accent-color)" fontSize={12} label={{ value: t('stats_avg_earnings_per_hour'), angle: 90, position: 'insideRight', fill: 'var(--accent-color)', style: { textAnchor: 'middle' } }} />
+                            <Tooltip 
+                                cursor={{fill: 'rgba(255,255,255,0.1)'}}
+                                contentStyle={{ backgroundColor: 'rgba(20, 20, 40, 0.9)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px' }}
+                            />
+                            <Legend />
+                            <Bar yAxisId="left" dataKey="tablesPerHour" name={t('stats_tables_per_hour_chart')} fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                            <Bar yAxisId="right" dataKey="avgEarning" name={t('stats_avg_earnings_per_hour')} fill="var(--accent-color)" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </StatCard>
             </div>
         );
     }

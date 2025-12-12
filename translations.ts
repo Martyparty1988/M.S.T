@@ -177,6 +177,7 @@ const en = {
   stats_total_tables_completed: "Tables Completed",
   stats_total_man_hours: "Total Man-Hours Logged",
   stats_total_cost: "Total Cost to Date",
+  stats_combined_performance_title: "Combined Worker Performance",
   
   // Settings Page
   settings_project_management_title: "Project Management",
@@ -433,6 +434,7 @@ export const translations = {
     stats_total_tables_completed: "Dokončené stoly",
     stats_total_man_hours: "Celkem člověkohodin",
     stats_total_cost: "Celkové náklady k datu",
+    stats_combined_performance_title: "Kombinovaný výkon pracovníků",
 
     // Settings Page
     settings_project_management_title: "Správa projektů",
@@ -595,6 +597,7 @@ export const translations = {
     stats_total_tables_completed: "Užbaigti stalai",
     stats_total_man_hours: "Iš viso darbo valandų",
     stats_total_cost: "Bendra kaina iki šiol",
+    stats_combined_performance_title: "Bendras darbuotojų našumas",
     map_legend_completed: "Atlikta",
     map_legend_selected: "Pasirinkta",
     map_legend_pending: "Laukiama",
