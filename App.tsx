@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import { AppProvider, useAppContext } from './context/AppContext';
 import { I18nProvider, useI18n } from './context/I18nContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -12,31 +12,10 @@ import SettingsPage from './pages/SettingsPage';
 import BottomNav from './components/BottomNav';
 import Loader from './components/Loader';
 import Toast from './components/Toast';
-import GeminiAssistant from './components/GeminiAssistant';
-import { Page } from './types';
-
-const pageOrder: Page[] = ['plan', 'attendance', 'records', 'payroll', 'stats', 'settings'];
 
 const AppContent: React.FC = () => {
   const { page, loading, toast } = useAppContext();
   const { t } = useI18n();
-  const [animationClass, setAnimationClass] = useState('');
-  const prevPageIndexRef = useRef(pageOrder.indexOf(page));
-
-  useEffect(() => {
-    const currentPageIndex = pageOrder.indexOf(page);
-    const prevPageIndex = prevPageIndexRef.current;
-
-    if (currentPageIndex !== prevPageIndex) {
-      if (currentPageIndex > prevPageIndex) {
-        setAnimationClass('slide-in-right');
-      } else {
-        setAnimationClass('slide-in-left');
-      }
-    }
-    prevPageIndexRef.current = currentPageIndex;
-  }, [page]);
-
 
   const renderPage = () => {
     switch (page) {
@@ -68,13 +47,12 @@ const AppContent: React.FC = () => {
         </h1>
       </header>
 
-      <main className="flex-grow relative overflow-hidden">
-        <div className={`absolute inset-0 ${animationClass}`}>
+      <main className="flex-grow overflow-hidden">
+        <div className="h-full w-full">
           {renderPage()}
         </div>
       </main>
       
-      <GeminiAssistant />
       <BottomNav />
       {loading && <Loader />}
       {toast && <Toast message={toast} />}

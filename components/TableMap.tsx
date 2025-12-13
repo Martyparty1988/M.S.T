@@ -1,4 +1,5 @@
 
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useI18n } from '../context/I18nContext';
 
@@ -69,9 +70,9 @@ const TableMap: React.FC<TableMapProps> = ({ tables, completedTables, selectedTa
     };
     
     // Touch handlers
-    const lastTouches = useRef<{ t1: Touch, t2?: Touch } | null>(null);
+    const lastTouches = useRef<{ t1: React.Touch, t2?: React.Touch } | null>(null);
 
-    const getDistance = (t1: Touch, t2: Touch) => {
+    const getDistance = (t1: React.Touch, t2: React.Touch) => {
         return Math.sqrt(Math.pow(t1.clientX - t2.clientX, 2) + Math.pow(t1.clientY - t2.clientY, 2));
     };
 

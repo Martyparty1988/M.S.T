@@ -60,7 +60,7 @@ const AttendancePage: React.FC = () => {
                 <h2 className="text-xl font-bold text-white">{t('attendance_page_title')}</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label className="block mb-2 text-sm font-medium text-white/70">{t('stats_select_project_label')}</label>
+                        <label className="block mb-2 text-sm font-medium text-white/70">{t('payroll_project_label')}</label>
                         <select value={selectedProjectId} onChange={e => setSelectedProjectId(e.target.value)} className={formInputStyle}>
                             {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                         </select>

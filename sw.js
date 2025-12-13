@@ -1,9 +1,33 @@
-const CACHE_NAME = 'solar-work-count-cache-v2';
+
+const CACHE_NAME = 'solar-work-count-cache-v4';
 const urlsToCache = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/icon.svg'
+  '/icon.svg',
+  '/index.tsx',
+  '/App.tsx',
+  '/types.ts',
+  '/translations.ts',
+  '/hooks/useLocalStorage.ts',
+  '/context/AppContext.tsx',
+  '/context/I18nContext.tsx',
+  '/context/ThemeContext.tsx',
+  '/components/BottomNav.tsx',
+  '/components/Loader.tsx',
+  '/components/Toast.tsx',
+  '/components/Modal.tsx',
+  '/components/SkeletonCard.tsx',
+  '/components/TableMap.tsx',
+  '/components/ManageTeamModal.tsx',
+  '/components/EditWorkerModal.tsx',
+  '/components/QuickLogTablesModal.tsx',
+  '/pages/PlanPage.tsx',
+  '/pages/AttendancePage.tsx',
+  '/pages/RecordsPage.tsx',
+  '/pages/PayrollPage.tsx',
+  '/pages/StatsPage.tsx',
+  '/pages/SettingsPage.tsx'
 ];
 
 self.addEventListener('install', event => {
@@ -43,24 +67,17 @@ self.addEventListener('fetch', event => {
         return fetch(event.request).then(
           networkResponse => {
             // Check if we received a valid response.
-            // Opaque responses (from no-cors requests) have status 0, so we allow them.
+            // Opaque responses (from no-cors requests, e.g. CDNs) have status 0, so we allow them for caching runtime.
             if (!networkResponse || (networkResponse.status !== 200 && networkResponse.status !== 0)) {
               return networkResponse;
             }
             
-            const responseToCache = networkResponse.clone();
-
-            caches.open(CACHE_NAME)
-              .then(cache => {
-                cache.put(event.request, responseToCache);
-              });
-
+            // Note: We don't cache runtime API calls or CDN calls here to keep it simple,
+            // but the App Shell files listed in urlsToCache will be served from cache.
             return networkResponse;
           }
         ).catch(error => {
           console.log('Fetch failed:', error);
-          // If fetch fails, we don't have anything to return.
-          // The browser will show its own offline error.
         });
       })
   );

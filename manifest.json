@@ -1,7 +1,8 @@
+
 {
-  "short_name": "Solar WC",
-  "name": "Solar Work Count LT",
-  "description": "An offline-first PWA for tracking solar installation work. It features project-based management, detailed work entry logging (hourly, paneling, construction, cables), and project-specific statistics.",
+  "short_name": "SolarWorkCount",
+  "name": "Solar work count Lithuania by Marty Party",
+  "description": "An offline-first PWA for tracking solar installation work.",
   "icons": [
     {
       "src": "icon.svg",
@@ -12,6 +13,7 @@
   ],
   "start_url": "/",
   "display": "standalone",
-  "theme_color": "#0c0c1e",
-  "background_color": "#0c0c1e"
+  "orientation": "portrait",
+  "theme_color": "#0d1120",
+  "background_color": "#0d1120"
 }

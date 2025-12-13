@@ -1,6 +1,5 @@
 
 import React, { useState } from 'react';
-import { GoogleGenAI } from "@google/genai";
 import { useAppContext } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
 import { useTheme } from '../context/ThemeContext';
@@ -162,59 +161,6 @@ const SettingsPage: React.FC = () => {
     }, () => {
         showToast(t("toast_report_copy_failed"));
     });
-  };
-
-  const generateAIDailyReport = async () => {
-    if (!navigator.onLine) {
-        showToast(t('toast_ai_error'));
-        return;
-    }
-
-    const todaysEntries = getTodaysEntries();
-    if (todaysEntries.length === 0) {
-        showToast(t("toast_no_entries_today"));
-        return;
-    }
-
-    setLoading(true);
-    try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-        
-        const logs = todaysEntries.map(e => ({
-            project: projects.find(p => p.id === e.projectId)?.name,
-            workers: e.workerIds.map(id => workers.find(w => w.id === id)?.name).join(', '),
-            type: e.type,
-            subType: e.type === 'task' ? e.subType : undefined,
-            details: JSON.stringify(e)
-        }));
-
-        const prompt = `Based on the following work logs from a solar installation site for today, write a concise, professional daily summary report for the project manager.
-        Highlight total progress (tables, modules, etc.), workforce activity, and any notable items.
-        Format it for easy reading (e.g., for WhatsApp or Email).
-        Language: ${locale} (CS, EN, or LT).
-        
-        Logs:
-        ${JSON.stringify(logs)}`;
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-        });
-
-        const text = response.text;
-        if (text) {
-            navigator.clipboard.writeText(text).then(() => {
-                showToast(t("toast_ai_report_generated"));
-            });
-        } else {
-            showToast(t("toast_ai_error"));
-        }
-    } catch (error) {
-        console.error(error);
-        showToast(t("toast_ai_error"));
-    } finally {
-        setLoading(false);
-    }
   };
 
   const handleExportData = () => {
@@ -382,12 +328,6 @@ const SettingsPage: React.FC = () => {
             <div className="space-y-3">
                 <button onClick={generateDailyReport} className="w-full bg-gradient-to-r from-green-500 to-teal-500 hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition transform hover:scale-105 active:scale-95 shadow-lg">
                     {t('settings_generate_report_button')}
-                </button>
-                <button onClick={generateAIDailyReport} className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 text-white font-bold py-3 px-4 rounded-xl transition transform hover:scale-105 active:scale-95 shadow-lg flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                    </svg>
-                    {t('settings_generate_ai_report_button')}
                 </button>
             </div>
         </SettingsCard>
